@@ -330,7 +330,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <?php $index =1; foreach(\Illuminate\Support\Facades\DB::connection()->table('users_bank')->where('user_id', $user['id'])->orderBy('id', 'DESC')->get()->getResultArray() as $bank) : ?>
+                    <?php $index =1; foreach(\Illuminate\Support\Facades\DB::connection()->table('users_bank')->where('user_id', $user['id'])->orderBy('id', 'DESC')->get()->map(fn($item) => (array)$item) as $bank) : ?>
                     <tr>
                         <td><?= $index; ?></td>
                         <td><?= $bank['account_name']?></td>

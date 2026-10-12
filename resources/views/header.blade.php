@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html style="--primary-rgb: <?= env("colors.primary.rgb"); ?>;" lang="en" dir="ltr" data-nav-layout="vertical"
+<html style="--primary-rgb: <?= env("colors.primary.rgb", "32, 143, 132"); ?>;" lang="en" dir="ltr" data-nav-layout="vertical"
     data-theme-mode="light" data-header-styles="light" data-menu-styles="light" data-toggled="open" loader="enable">
 
 <head>
@@ -8,10 +8,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title> Dashboard - <?= env("app.title"); ?> </title>
+    <title> Dashboard - <?= env("app.title", "Unizflow"); ?> </title>
 
     <!-- Favicon -->
-    <link rel="icon" href="<?= env("favicon"); ?>" type="image/x-icon">
+    <link rel="icon" href="<?= env("favicon", "/assets/royalpay-favicon.png"); ?>" type="image/x-icon">
 
     <!-- Choices JS -->
     <script src="/assets/libs/choices.js/public/assets/scripts/choices.min.js"></script>
@@ -62,7 +62,7 @@
     <style>
         /* rgb(32, 143, 132) */
         .app-sidebar .side-menu__item.active {
-            background: linear-gradient(124deg, rgba(<?= env("colors.primary.rgb"); ?>, 0.7) 0%, rgb(60,90,118) 100%);
+            background: linear-gradient(124deg, rgba(<?= env("colors.primary.rgb", "32, 143, 132"); ?>, 0.7) 0%, rgb(60,90,118) 100%);
             box-shadow: 0px 2px 6px 0px rgba(115, 103, 240, .3);
             color: #fff !important;
         }
@@ -133,12 +133,12 @@
                     <div class="header-element">
                         <div class="horizontal-logo">
                             <a href="/" class="header-logo">
-                                <img src="<?= env("logo"); ?>" alt="logo" class="desktop-logo">
-                                <img src="<?= env("logo"); ?>" alt="logo" class="toggle-logo">
-                                <img src="<?= env("logo"); ?>" alt="logo" class="desktop-dark">
-                                <img src="<?= env("logo"); ?>" alt="logo" class="toggle-dark">
-                                <img src="<?= env("logo"); ?>" alt="logo" class="desktop-white">
-                                <img src="<?= env("logo"); ?>" alt="logo" class="toggle-white">
+                                <img src="<?= env("logo", "/assets/royalpay-logo.png"); ?>" alt="logo" class="desktop-logo">
+                                <img src="<?= env("logo", "/assets/royalpay-logo.png"); ?>" alt="logo" class="toggle-logo">
+                                <img src="<?= env("logo", "/assets/royalpay-logo.png"); ?>" alt="logo" class="desktop-dark">
+                                <img src="<?= env("logo", "/assets/royalpay-logo.png"); ?>" alt="logo" class="toggle-dark">
+                                <img src="<?= env("logo", "/assets/royalpay-logo.png"); ?>" alt="logo" class="desktop-white">
+                                <img src="<?= env("logo", "/assets/royalpay-logo.png"); ?>" alt="logo" class="toggle-white">
                             </a>
                         </div>
                     </div>
@@ -275,12 +275,12 @@
             <div class="main-sidebar-header">
                 <div class="d-flex gap-2 justify-content-center align-items-center">
                     <a href="/" class="header-logo">
-                        <img src="<?= env("logo"); ?>" alt="logo" style="height: 50px;" class="desktop-logo">
-                        <img src="<?= env("favicon"); ?>" alt="logo" style="height: 50px;" class="toggle-logo">
-                        <img src="<?= env("logo"); ?>" alt="logo" style="height: 50px;" class="desktop-dark">
-                        <img src="<?= env("favicon"); ?>" alt="logo" style="height: 50px;" class="toggle-dark">
-                        <img src="<?= env("logo"); ?>" alt="logo" style="height: 50px;" class="desktop-white">
-                        <img src="<?= env("favicon"); ?>" alt="logo" style="height: 50px;" class="toggle-white">
+                        <img src="<?= env("logo", "/assets/royalpay-logo.png"); ?>" alt="logo" style="height: 50px;" class="desktop-logo">
+                        <img src="<?= env("favicon", "/assets/royalpay-favicon.png"); ?>" alt="logo" style="height: 50px;" class="toggle-logo">
+                        <img src="<?= env("logo", "/assets/royalpay-logo.png"); ?>" alt="logo" style="height: 50px;" class="desktop-dark">
+                        <img src="<?= env("favicon", "/assets/royalpay-favicon.png"); ?>" alt="logo" style="height: 50px;" class="toggle-dark">
+                        <img src="<?= env("logo", "/assets/royalpay-logo.png"); ?>" alt="logo" style="height: 50px;" class="desktop-white">
+                        <img src="<?= env("favicon", "/assets/royalpay-favicon.png"); ?>" alt="logo" style="height: 50px;" class="toggle-white">
                     </a>
                    
                 </div>
@@ -503,6 +503,18 @@
                         
                        
                      
+                         <!-- Start::slide -->
+                        <li class="slide">
+                            <a onclick="navigate('/admin/error-logs'); activeNavigation(this);"
+                                class="side-menu__item <?php if ($page == "error_logs") {
+                                    echo "active";
+                                } ?>">
+                                <i class="ti ti-bug side-menu__icon"></i>
+                                <span class="side-menu__label">Error Logs</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
                          <!-- Start::slide -->
                         <li class="slide">
                             <a onclick="navigate('/admin/settings'); activeNavigation(this);"

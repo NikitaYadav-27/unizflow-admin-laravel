@@ -183,3 +183,6 @@ Route::post('/api/admin/settlements/settle-to-bank', [Home::class, 'update_settl
 Route::get('/api/admin/transactions/checker/{id}', [Checker::class, 'index']);
 
 Route::post('/api/admin/providers/update/{id}', [Home::class, 'update_provider']);
+
+Route::get('/admin/error-logs', [Home::class, 'error_logs']);
+Route::get('/api/tables/error_logs', [Tables::class, 'error_logs']);

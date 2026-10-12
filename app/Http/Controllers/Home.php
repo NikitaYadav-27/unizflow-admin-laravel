@@ -1295,5 +1295,17 @@ class Home extends BaseController
         ], 200);
     }
 
-
+    public function error_logs()
+    {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return redirect('/admin/login');
+        }
+        $admin = (new \App\Models\Admin())->find($session->get('admin_id'));
+        $providers = (new \App\Models\Providers())->get();
+        return view('error_logs', [
+            'admin' => $admin,
+            'providers' => $providers
+        ]);
+    }
 }

@@ -115,7 +115,8 @@ class Tables extends BaseController
             
 
             $data[] = [
-                '<input class="form-check-input user-select" onclick="selectUser(this)" data-uid="' . $user->id . '" type="checkbox"', '>', $index,
+                '<input class="form-check-input user-select" onclick="selectUser(this)" data-uid="' . $user->id . '" type="checkbox">',
+                $index,
                 $user->locked == 1
                     ? '<button onclick="lockSwitch(\'' . $user->id . '\')" class="btn btn-danger-transparent btn-sm"><i class="ti ti-lock"></i></button>'
                     : '<button onclick="lockSwitch(\'' . $user->id . '\')" class="btn btn-success-transparent btn-sm"><i class="ti ti-lock-open"></i></button>',
@@ -260,10 +261,10 @@ class Tables extends BaseController
 
         $draw = (int) $request->input('draw');
         $settlementModel = new \App\Models\Settlement();
-        $totalSettlement = $settlementModel->where("settlements.created_at BETWEEN '$startDate' AND '$endDate' ")->count();
+        $totalSettlement = $settlementModel->whereBetween('settlements.created_at', [$startDate, $endDate])->count();
         $builder = $settlementModel->query();
         $builder->selectRaw("settlements.* , users.name as name");
-        $builder->where("settlements.created_at BETWEEN '$startDate' AND '$endDate' ");
+        $builder->whereBetween('settlements.created_at', [$startDate, $endDate]);
         $builder->where("settlements.status", $status);
         $builder->join("users", "users.id", "=", "settlements.user_id");
 
@@ -307,7 +308,7 @@ class Tables extends BaseController
 
           
 
-            $data[] = [
+            $row = [
                 $index,
                 $settlement->name,
                 $settlement->batch_id,
@@ -324,9 +325,14 @@ class Tables extends BaseController
                 $this->getStatusSpan($settlement->status),
                 $settlement->created_at,
                 $settlement->status == "Success" ? $settlement->updated_at : "NA",
-                //   $settlement->to_time,
-                '<button onclick="navigate(\'/admin/settlements-batch/' . $encId . '\')" class="btn btn-sm btn-primary-transparent"><i class="ti ti-list"></i>&nbsp;&nbsp;' . $totalTransactions . '</button', '>', $settlement->status != "Success" ? $actions : "",
+                '<button onclick="navigate(\'/admin/settlements-batch/' . $encId . '\')" class="btn btn-sm btn-primary-transparent"><i class="ti ti-list"></i>&nbsp;&nbsp;' . $totalTransactions . '</button>',
             ];
+
+            if ($status == "Pending" || $status == "pending" || $status == "hold") {
+                $row[] = $actions;
+            }
+
+            $data[] = $row;
             $index++;
         }
 
@@ -360,10 +366,10 @@ class Tables extends BaseController
 
         $draw = (int) $request->input('draw');
         $fundrequestModel = new \App\Models\FundRequest();
-        $totalFundrequest = $fundrequestModel->where("fund_requests.created_at BETWEEN '$startDate' AND '$endDate' ")->count();
+        $totalFundrequest = $fundrequestModel->whereBetween('fund_requests.created_at', [$startDate, $endDate])->count();
         $builder = $fundrequestModel->query();
         $builder->selectRaw("fund_requests.* , users.name as name, fund_request_banks.name as bank_name");
-        $builder->where("fund_requests.created_at BETWEEN '$startDate' AND '$endDate' ");
+        $builder->whereBetween('fund_requests.created_at', [$startDate, $endDate]);
         $builder->where("fund_requests.status", $status);
         $builder->join("users", "users.id", "=", "fund_requests.user_id");
         $builder->join("fund_request_banks", "fund_request_banks.id", "=", "fund_requests.bank");
@@ -389,7 +395,7 @@ class Tables extends BaseController
         foreach ($fundrequests as $fundrequest) {
             $encId = bin2hex(openssl_encrypt($fundrequest->id, 'AES-256-CBC', env("encryption.key"), OPENSSL_RAW_DATA, substr(hash('sha256', env("encryption.key")), 0, 16)));
 
-            $data[] = [
+            $row = [
                 $index,
                 $fundrequest->name,
                 $fundrequest->bank_name,
@@ -398,21 +404,22 @@ class Tables extends BaseController
                 $fundrequest->rrn,
                 "₹ " . $fundrequest->amount,
                 $this->getStatusSpan($fundrequest->status),
-                '<button onclick="window.open(\'' . env("frontendURL") . 'uploads/' . $fundrequest->receipt . '\');" class="btn btn-sm btn-primary-transparent"><i class="ti ti-receipt"></i></button', '>', $fundrequest->remarks,
+                '<button onclick="window.open(\'' . env("frontendURL") . 'uploads/' . $fundrequest->receipt . '\');" class="btn btn-sm btn-primary-transparent"><i class="ti ti-receipt"></i></button>',
+                $fundrequest->remarks,
                 $fundrequest->created_at,
                 $fundrequest->status != "Pending" ? $fundrequest->updated_at : "NA",
-
-                $fundrequest->status == "Failed"
-                    ? $fundrequest->reason
-                    :  '<div class="d-flex gap-2">
-              <button onclick="acceptRequest(\'' .
-                            $encId .
-                            '\');" class="btn btn-sm btn-success-transparent"><i class="ti ti-check"></i></button>
-               <button onclick="rejectRequest(\'' .
-                            $encId .
-                            '\');" class="btn btn-sm btn-danger-transparent"><i class="ti ti-x"></i></button></div>'
-                        ,
             ];
+
+            if ($status == "Pending") {
+                $row[] = '<div class="d-flex gap-2">
+                    <button onclick="acceptRequest(\'' . $encId . '\');" class="btn btn-sm btn-success-transparent"><i class="ti ti-check"></i></button>
+                    <button onclick="rejectRequest(\'' . $encId . '\');" class="btn btn-sm btn-danger-transparent"><i class="ti ti-x"></i></button>
+                </div>';
+            } elseif ($status == "Failed") {
+                $row[] = $fundrequest->reason ?? '';
+            }
+
+            $data[] = $row;
             $index++;
         }
 
@@ -1392,4 +1399,89 @@ class Tables extends BaseController
         }
     }
 
+    public function error_logs()
+    {
+        $session = session();
+        $admin = new \App\Models\Admin();
+        $admin = $admin->find($session->get('admin_id'));
+
+        $availableSearchKeys = ["txnid", "type"];
+        $request = request();
+        $offset = (int) $request->input('start', 0);
+        $limit = (int) $request->input('length', 10);
+        $searchBy = $request->input('searchBy');
+        $searchValue = $request->input('searchValue');
+        $provider = $request->input('provider');
+        $type = $request->input('type');
+        $startDate = $request->input('startDate') . " 00:00:00";
+        $endDate = $request->input('endDate') . " 23:59:59";
+        $draw = (int) $request->input('draw');
+
+        $errorLogModel = new \App\Models\ErrorLog();
+        $totalErrorLogs = $errorLogModel->whereBetween('error_logs.created_at', [$startDate, $endDate])->count();
+
+        $builder = $errorLogModel->query();
+        $builder->selectRaw("error_logs.*, COALESCE(providers.name, 'N/A') as provider_name");
+        $builder->leftJoin("providers", "providers.id", "=", "error_logs.provider");
+        $builder->whereBetween('error_logs.created_at', [$startDate, $endDate]);
+
+        if (!empty($provider)) {
+            $builder->where('error_logs.provider', $provider);
+        }
+
+        if (!empty($type)) {
+            $builder->where('error_logs.type', $type);
+        }
+
+        if (!empty($searchBy) && !empty($searchValue) && in_array($searchBy, $availableSearchKeys)) {
+            $builder->like('error_logs.' . $searchBy, $searchValue);
+        }
+
+        $filteredBuilder = clone $builder;
+        $filteredErrorLogs = $filteredBuilder->count();
+
+        $builder->orderBy('error_logs.id', "DESC");
+        if ($limit != -1) {
+            $builder->limit($limit, $offset);
+        }
+
+        $errorLogs = $builder->get();
+        $data = [];
+        $index = $offset + 1;
+
+        foreach ($errorLogs as $log) {
+            $typeBadge = '<span class="badge bg-danger-transparent">' . htmlspecialchars($log->type) . '</span>';
+            if ($log->type === 'PAYIN') {
+                $typeBadge = '<span class="badge bg-info-transparent">PAYIN</span>';
+            } elseif ($log->type === 'PAYOUT') {
+                $typeBadge = '<span class="badge bg-warning-transparent">PAYOUT</span>';
+            }
+
+            $detailsBtn = '<button class="btn btn-sm btn-primary-transparent" onclick="viewLogModal(' . $log->id . ')"><i class="ti ti-eye"></i> View</button>'
+                . '<div id="log_data_' . $log->id . '" style="display:none;" '
+                . 'data-type="' . htmlspecialchars($log->type, ENT_QUOTES) . '" '
+                . 'data-txnid="' . htmlspecialchars($log->txnid, ENT_QUOTES) . '" '
+                . 'data-provider="' . htmlspecialchars($log->provider_name, ENT_QUOTES) . '" '
+                . 'data-time="' . htmlspecialchars($log->created_at, ENT_QUOTES) . '" '
+                . 'data-log="' . htmlspecialchars($log->log ?? '', ENT_QUOTES) . '" '
+                . 'data-request="' . htmlspecialchars($log->request ?? '', ENT_QUOTES) . '"></div>';
+
+            $data[] = [
+                $index,
+                $typeBadge,
+                $log->txnid ? '<span class="fw-semibold">' . htmlspecialchars($log->txnid) . '</span>' : 'N/A',
+                htmlspecialchars($log->provider_name),
+                $detailsBtn,
+                $log->created_at,
+            ];
+            $index++;
+        }
+
+        return response()->json([
+            'draw' => $draw,
+            'recordsTotal' => $totalErrorLogs,
+            'recordsFiltered' => $filteredErrorLogs,
+            'data' => $data,
+        ], 200);
+    }
 }
