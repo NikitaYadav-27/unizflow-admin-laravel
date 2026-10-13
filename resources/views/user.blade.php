@@ -196,9 +196,15 @@
                                   </div>
                                 </div>
                                 
-                                
-                                
-                              </div>  
+                                <div class="col-lg-4">
+                                  <div class="form-group mb-2">
+                                    <label class="mb-1">Settlement Mode <span class="text-primary">*</span></label>
+                                    <select class="form-control" name="settlement_type">
+                                        <option value="manual" <?= ($user['settlement_type'] ?? 'manual') == 'manual' ? 'selected' : '' ?>>Manual</option>
+                                        <option value="automatic" <?= ($user['settlement_type'] ?? 'manual') == 'automatic' ? 'selected' : '' ?>>Automatic</option>
+                                    </select>
+                                  </div>
+                                </div>  
                               <div class="d-flex w-100 justify-content-end">
                                   <button type="submit" class="btn btn-primary mt-3">Update Changes</button>
                               </div>

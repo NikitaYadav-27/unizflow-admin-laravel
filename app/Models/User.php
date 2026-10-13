@@ -12,8 +12,25 @@ class User extends Model
     
     
     protected $fillable = [
-      'merchant_id', 'name', 'email', 'phone', 'password', 'active', 'wallet', 'hold_wallet', 'reset_password_token', 'reset_password_token_time', 'package', 'payin', 'payin_provider', 'payout_provider', 'payout', 'api_access', 'api_access_key', 'settlement_package', 'payin_webhook', 'previous_payin_webhook', 'payout_webhook', 'previous_payout_webhook', 'created_at', 'updated_at','ad_token', 'payin_limit','payout_limit', 'payout_per_limit','locked'
+      'merchant_id', 'name', 'email', 'phone', 'password', 'active', 'wallet', 'hold_wallet', 'reset_password_token', 'reset_password_token_time', 'package', 'payin', 'payin_provider', 'payout_provider', 'payout', 'api_access', 'api_access_key', 'settlement_package', 'settlement_type', 'payin_webhook', 'previous_payin_webhook', 'payout_webhook', 'previous_payout_webhook', 'created_at', 'updated_at','ad_token', 'payin_limit','payout_limit', 'payout_per_limit','locked'
     ];
+
+    public function scopeAutomaticSettlement($query)
+    {
+        return $query->where('settlement_type', 'automatic');
+    }
+
+    public function scopeManualSettlement($query)
+    {
+        return $query->where(function($q) {
+            $q->where('settlement_type', 'manual')->orWhereNull('settlement_type');
+        });
+    }
+
+    public function isAutomaticSettlement()
+    {
+        return ($this->settlement_type === 'automatic');
+    }
 
 
     public function checkPhoneExists($phone)

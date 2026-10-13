@@ -22,8 +22,7 @@
     <div class="card-body">
         <div class="d-flex justify-content-between mb-2 flex-wrap gap-2">
 
-            <div class="me-2 sm-w-100">
-               
+            <div class="d-flex gap-2 me-2 sm-w-100 align-items-center">
                 <select onchange="changeLength(this.value)" class="form-select" id="pageSize"
                     onchange="window.pageSize = this.value; getTransactions(window.pageNo,window.pageSize,window.searchBy,window.searchValue)">
                     <option value="10">10</option>
@@ -31,6 +30,11 @@
                     <option selected value="50">50</option>
                     <option value="100">100</option>
                 </select>
+                <?php if($status == "pending") : ?>
+                    <button type="button" class="btn btn-sm btn-primary-transparent text-nowrap" onclick="triggerAutoSettlement(this)" title="Process settlements for users configured with Automatic Settlement">
+                        <i class="ti ti-bolt me-1"></i>Run Auto Settlement
+                    </button>
+                <?php endif; ?>
             </div>
 
             <div class="d-flex flex-wrap gap-2">
@@ -230,6 +234,30 @@
             window.dataTable.DataTable().ajax.reload();
         }
 
+    function triggerAutoSettlement(btn) {
+        let orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processing...';
+        $.ajax({
+            url: '/api/admin/settlements/trigger-auto',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({}),
+            success: function(res) {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+                notify("success", res.message || "Auto settlement executed");
+                if (window.dataTable) {
+                    window.dataTable.DataTable().ajax.reload();
+                }
+            },
+            error: function(xhr) {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+                let msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : "Failed to run auto settlement";
+                notify("error", msg);
+            }
+        });
     }
 
 </script>

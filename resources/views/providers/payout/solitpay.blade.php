@@ -2,13 +2,13 @@
 $userModel = new \App\Models\User();
 $users = $userModel->get();
 $transactionModel = new \App\Models\Transaction();
-
+$providerSlabModel = new \App\Models\Providerslab();
+$providerSlabs = $providerSlabModel->where('provider_id', $provider['id'])->get();
 
 ?><div class="card custom-card">
   <div class="card-header d-flex justify-content-between">
-    <h6 class="card-title"> <?= $provider['name'];?> </h6>
-    <img style="width: 60px; height: 30px;" src="
-			<?= $provider['logo'];?>">
+    <h6 class="card-title mb-0"> <?= $provider['name'];?> </h6>
+    <img style="width: 60px; height: 30px; object-fit: contain;" onerror="this.onerror=null;this.src='/assets/images/company-logos/1.png';" src="<?= $provider['logo'];?>">
   </div>
   <div class="card-body">
     <ul class="nav nav-tabs tab-style-1 d-sm-flex d-block" role="tablist">
@@ -16,6 +16,9 @@ $transactionModel = new \App\Models\Transaction();
 
       <li class="nav-item">
         <a class="nav-link active" data-bs-toggle="tab" data-bs-target="#settings" href="#settings">Settings</a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" data-bs-toggle="tab" data-bs-target="#slabs" href="#slabs">Slabs</a>
       </li>
     </ul>
     <div class="tab-content">
@@ -68,6 +71,53 @@ function handleFile(input) {
     reader.readAsDataURL(file);
 }
 </script>
+      </div>
+
+      <div class="tab-pane px-0 border-0" id="slabs" role="tabpanel">
+          <form action="/api/admin/update-provider-slab" method="POST">
+             <input type="hidden" name="provider_id" value="<?= $provider['id']; ?>">
+             <div class="table-responsive">
+                <table class="table w-100">
+                    <thead class="table-primary">
+                    <tr>
+                        <th style="padding: 12px 10px !important;" class="text-center">Min Amount</th>
+                        <th style="padding: 12px 10px !important;" class="text-center">Max Amount</th>
+                        <th style="padding: 12px 10px !important;" class="text-center">Charge Amount</th>
+                        <th style="padding: 12px 10px !important;" class="text-center">Percent</th>
+                        <th style="padding: 12px 10px !important;" class="text-center">GST</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <?php for($i = 1; $i < 7; $i ++) : ?>
+                    <tr>
+                        <td>
+                             <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($providerSlabs[$i-1])){ echo $providerSlabs[$i-1]['min_amount']; } ?>" placeholder="Min Amount" name="min_amount_<?= $i; ?>">
+                        </td>
+                         <td>
+                            <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($providerSlabs[$i-1])){ echo $providerSlabs[$i-1]['max_amount']; } ?>" placeholder="Max Amount" name="max_amount_<?= $i; ?>">
+                        </td>
+                         <td>
+                            <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($providerSlabs[$i-1])){ echo $providerSlabs[$i-1]['amount']; } ?>" placeholder="Charge Amount" name="charge_amount_<?= $i; ?>">
+                        </td>
+                         <td class="text-center">
+                            <div class="custom-toggle-switch toggle-sm d-inline-block">
+                              <input id="payout-slab-percent-<?= $i; ?>" type="checkbox" value="percent" name="percent_<?= $i; ?>" <?php if(isset($providerSlabs[$i-1])){ echo $providerSlabs[$i-1]['percent'] == 1 ? "checked" : ""; } ?>>
+                              <label for="payout-slab-percent-<?= $i; ?>" class="label-primary"></label>
+                            </div>
+                        </td>
+                         <td class="text-center">
+                            <div class="custom-toggle-switch toggle-sm d-inline-block">
+                              <input id="payout-slab-gst-<?= $i; ?>" type="checkbox" value="gst" name="gst_<?= $i; ?>" <?php if(isset($providerSlabs[$i-1])){ echo $providerSlabs[$i-1]['gst'] == 1 ? "checked" : ""; } ?>>
+                              <label for="payout-slab-gst-<?= $i; ?>" class="label-primary"></label>
+                            </div>
+                        </td>
+                    </tr>
+                    <?php endfor; ?>
+                    </tbody>
+                </table>
+             </div>
+             <button type="submit" class="btn btn-primary mt-3 float-end">Save Changes</button>
+          </form>
       </div>
     </div>
   </div>

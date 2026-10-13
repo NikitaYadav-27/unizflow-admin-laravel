@@ -5,6 +5,8 @@ use App\Libraries\Recaptcha;
 
 class Home extends BaseController
 {
+    use \App\Traits\FileUploadTrait;
+
     function __construct() {
         $this->middleware(function ($request, $next) {
             $admin_id = session()->get("admin_id");
@@ -555,6 +557,253 @@ class Home extends BaseController
         return response()->json(["status" => "success", "message" => "Package Updated Successfully"], 200);
         
     }
+
+    public function settlement_packages()
+    {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return redirect('/admin/login');
+        } else {
+            \App\Models\SettlementPackage::ensureSlotsTableExists();
+            $admin = new \App\Models\Admin();
+            $admin = $admin->find($session->get('admin_id'));
+            $data['admin'] = $admin;
+            $data['page'] = 'settlement_packages';
+            return view('settlement_packages', $data);
+        }
+    }
+
+    public function add_settlement_package()
+    {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return redirect('/admin/login');
+        } else {
+            \App\Models\SettlementPackage::ensureSlotsTableExists();
+            $admin = new \App\Models\Admin();
+            $admin = $admin->find($session->get('admin_id'));
+            $data['admin'] = $admin;
+            $data['page'] = 'add_settlement_package';
+            return view('add_settlement_package', $data);
+        }
+    }
+
+    public function edit_settlement_package($encId)
+    {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return redirect('/admin/login');
+        } else {
+            \App\Models\SettlementPackage::ensureSlotsTableExists();
+            $packageId = $this->decrypt($encId);
+            if (!($packageId > 0)) {
+                return redirect('/admin/settlement-packages');
+            }
+            $model = new \App\Models\SettlementPackage();
+            $package = $model->with('slots')->find($packageId);
+            if (!$package) {
+                return redirect('/admin/settlement-packages');
+            }
+            $admin = new \App\Models\Admin();
+            $admin = $admin->find($session->get('admin_id'));
+            $data['admin'] = $admin;
+            $data['package'] = $package;
+            $data['package_id'] = $this->encrypt($package->id);
+            $data['page'] = 'settlement_packages';
+            return view('edit_settlement_package', $data);
+        }
+    }
+
+    public function create_settlement_package()
+    {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return response()->json(["status" => "error", "message" => "Invalid Session"], 401);
+        }
+
+        \App\Models\SettlementPackage::ensureSlotsTableExists();
+
+        $input = json_decode(request()->getContent());
+        $name = trim($input->name ?? '');
+
+        if (strlen($name) < 3) {
+            return response()->json(["status" => "error", "message" => "Package name must be at least 3 characters"], 400);
+        }
+
+        $packageModel = new \App\Models\SettlementPackage();
+        if ($packageModel->packageNameExists($name)) {
+            return response()->json(["status" => "error", "message" => "Settlement Package Name already exists"], 429);
+        }
+
+        $slots = $input->slots ?? [];
+        if (!is_array($slots) || count($slots) === 0) {
+            return response()->json(["status" => "error", "message" => "Please configure at least one settlement time slot"], 400);
+        }
+
+        $slotData = [];
+        $slotNum = 1;
+        foreach ($slots as $slot) {
+            $settlementTime = trim($slot->settlement_time ?? '');
+            $txnFrom = trim($slot->txn_from_time ?? '');
+            $txnTo = trim($slot->txn_to_time ?? '');
+
+            if (empty($settlementTime) || empty($txnFrom) || empty($txnTo)) {
+                return response()->json([
+                    "status" => "error",
+                    "message" => "Slot {$slotNum}: All times (Settlement Time, From Time, To Time) are required"
+                ], 400);
+            }
+
+            $slotData[] = [
+                'slot_number' => $slotNum,
+                'settlement_time' => $settlementTime,
+                'txn_from_time' => $txnFrom,
+                'txn_to_time' => $txnTo,
+                'status' => 1
+            ];
+            $slotNum++;
+        }
+
+        \DB::beginTransaction();
+        try {
+            $createdPackage = $packageModel->create([
+                'name' => $name
+            ]);
+
+            foreach ($slotData as $s) {
+                $s['package_id'] = $createdPackage->id;
+                \App\Models\SettlementPackageSlot::create($s);
+            }
+
+            \DB::commit();
+            return response()->json([
+                "status" => "success",
+                "message" => "Settlement Package created successfully with " . count($slotData) . " time slots"
+            ], 200);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return response()->json([
+                "status" => "error",
+                "message" => "Failed to create settlement package: " . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function update_settlement_package()
+    {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return response()->json(["status" => "error", "message" => "Invalid Session"], 401);
+        }
+
+        \App\Models\SettlementPackage::ensureSlotsTableExists();
+
+        $input = json_decode(request()->getContent());
+        $packageId = $this->decrypt($input->package_id ?? '');
+
+        if (!($packageId > 0)) {
+            return response()->json(["status" => "error", "message" => "Invalid Package ID"], 400);
+        }
+
+        $name = trim($input->name ?? '');
+        if (strlen($name) < 3) {
+            return response()->json(["status" => "error", "message" => "Package Name must be at least 3 characters"], 400);
+        }
+
+        $packageModel = new \App\Models\SettlementPackage();
+        $package = $packageModel->find($packageId);
+        if (!$package) {
+            return response()->json(["status" => "error", "message" => "Settlement Package not found"], 404);
+        }
+
+        if ($packageModel->packageNameExists($name, $packageId)) {
+            return response()->json(["status" => "error", "message" => "Another Settlement Package with this name already exists"], 429);
+        }
+
+        $slots = $input->slots ?? [];
+        if (!is_array($slots) || count($slots) === 0) {
+            return response()->json(["status" => "error", "message" => "Please configure at least one settlement time slot"], 400);
+        }
+
+        $slotData = [];
+        $slotNum = 1;
+        foreach ($slots as $slot) {
+            $settlementTime = trim($slot->settlement_time ?? '');
+            $txnFrom = trim($slot->txn_from_time ?? '');
+            $txnTo = trim($slot->txn_to_time ?? '');
+
+            if (empty($settlementTime) || empty($txnFrom) || empty($txnTo)) {
+                return response()->json([
+                    "status" => "error",
+                    "message" => "Slot {$slotNum}: All times (Settlement Time, From Time, To Time) are required"
+                ], 400);
+            }
+
+            $slotData[] = [
+                'package_id' => $packageId,
+                'slot_number' => $slotNum,
+                'settlement_time' => $settlementTime,
+                'txn_from_time' => $txnFrom,
+                'txn_to_time' => $txnTo,
+                'status' => 1
+            ];
+            $slotNum++;
+        }
+
+        \DB::beginTransaction();
+        try {
+            $package->update(['name' => $name]);
+            \App\Models\SettlementPackageSlot::where('package_id', $packageId)->delete();
+            foreach ($slotData as $s) {
+                \App\Models\SettlementPackageSlot::create($s);
+            }
+            \DB::commit();
+            return response()->json([
+                "status" => "success",
+                "message" => "Settlement Package updated successfully"
+            ], 200);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return response()->json([
+                "status" => "error",
+                "message" => "Failed to update package: " . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function delete_settlement_package()
+    {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return response()->json(["status" => "error", "message" => "Invalid Session"], 401);
+        }
+
+        $input = json_decode(request()->getContent());
+        $packageId = $this->decrypt($input->package_id ?? '');
+
+        if (!($packageId > 0)) {
+            return response()->json(["status" => "error", "message" => "Invalid Package ID"], 400);
+        }
+
+        $userCount = \App\Models\User::where('settlement_package', $packageId)->count();
+        if ($userCount > 0) {
+            return response()->json([
+                "status" => "error",
+                "message" => "Cannot delete package: It is currently assigned to {$userCount} user(s)."
+            ], 400);
+        }
+
+        \DB::beginTransaction();
+        try {
+            \App\Models\SettlementPackageSlot::where('package_id', $packageId)->delete();
+            \App\Models\SettlementPackage::where('id', $packageId)->delete();
+            \DB::commit();
+            return response()->json(["status" => "success", "message" => "Settlement Package deleted successfully"], 200);
+        } catch (\Exception $e) {
+            \DB::rollBack();
+            return response()->json(["status" => "error", "message" => "Failed to delete: " . $e->getMessage()], 500);
+        }
+    }
     
     public function update_bank_users() {
         $session = session();
@@ -596,7 +845,25 @@ class Home extends BaseController
         $settlementModel->where('id', $id)->update(["status" => "Success", "settle_to" => "wallet"]);
         return response()->json(["status" => "success", "message" => "Amount Settled to User's Wallet !"], 200);
     }
-    
+
+    public function trigger_auto_settlements()
+    {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return response()->json(["status" => "error", "message" => "Invalid Session"], 401);
+        }
+
+        $date = request()->input('date');
+        $time = request()->input('time');
+
+        $result = \App\Libraries\AutoSettlement::process($date, $time, true);
+
+        return response()->json([
+            "status" => "success",
+            "message" => "Processed automatic settlements: {$result['settlements_created']} batch(es) created, ₹" . number_format($result['total_amount_settled'], 2) . " settled ({$result['eligible_auto_users_count']} auto users evaluated, {$result['skipped_manual_users_count']} manual users skipped).",
+            "data" => $result
+        ], 200);
+    }
     
     public function settle_to_bank($encId) {
         $session = session();
@@ -698,26 +965,24 @@ class Home extends BaseController
        $admin = $admin->find($session->get('admin_id'));
      
        
-       $input = json_decode(request()->getContent());
-       $service = $input["service"];
-       $packageId = $input["package_id"];
+       $input = json_decode(request()->getContent(), true) ?? [];
+       $service = $input["service"] ?? "";
+       $packageId = $input["package_id"] ?? "";
        if(!in_array($service,["payin","payout"])){
             return response()->json(["status" => "error", "message" => "Invalid Service Type"], 400);
        }
        $packageModel = new \App\Models\Package();
        $package = $packageModel->find($packageId);
-       if($package['name'] == ""){
+       if(!$package || $package['name'] == ""){
            return response()->json(["status" => "error", "message" => "Invalid Package Id"], 400);
        }
        
        $packageSlabModel = new \App\Models\Packageslab();
-       //delete all existing slabs 
        $packageSlabModel->where('service', $service)->where("package_id",$packageId)->delete();
-       //insert all new slabs
        for($i = 1; $i < 7; $i++){
-           $min_amount = $input["min_amount_$i"];
-           $max_amount = $input["max_amount_$i"];
-           $charge_amount = $input["charge_amount_$i"];
+           $min_amount = $input["min_amount_$i"] ?? "";
+           $max_amount = $input["max_amount_$i"] ?? "";
+           $charge_amount = $input["charge_amount_$i"] ?? "";
            $percent = isset($input["percent_$i"])?1:0;
            $gst = isset($input["gst_$i"])?1:0;
            if($min_amount != "" && $max_amount != "" && $charge_amount != "") {
@@ -737,6 +1002,50 @@ class Home extends BaseController
        
     }
     
+     public function update_provider_slab() {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return response()->json(["status" => "error", "message" => "Invalid Session"], 401);
+        }
+        $admin = new \App\Models\Admin();
+        $admin = $admin->find($session->get('admin_id'));
+
+        $input = request()->all();
+        if (empty($input)) {
+            $input = json_decode(request()->getContent(), true) ?? [];
+        }
+
+        $providerId = $input["provider_id"] ?? null;
+        $providerModel = new \App\Models\Providers();
+        $provider = $providerModel->find($providerId);
+        if(!$provider){
+            return response()->json(["status" => "error", "message" => "Invalid Provider Id"], 400);
+        }
+
+        $providerSlabModel = new \App\Models\Providerslab();
+        $providerSlabModel->where("provider_id", $providerId)->delete();
+
+        for($i = 1; $i < 7; $i++){
+            $min_amount = $input["min_amount_$i"] ?? "";
+            $max_amount = $input["max_amount_$i"] ?? "";
+            $charge_amount = $input["charge_amount_$i"] ?? "";
+            $percent = isset($input["percent_$i"]) ? 1 : 0;
+            $gst = isset($input["gst_$i"]) ? 1 : 0;
+            if($min_amount !== "" && $max_amount !== "" && $charge_amount !== "") {
+                $providerSlabModel->create([
+                   "provider_id" => $providerId,
+                   "min_amount" => $min_amount,
+                   "max_amount" => $max_amount,
+                   "amount" => $charge_amount,
+                   "percent" => $percent,
+                   "gst" => $gst
+                ]);
+            }
+        }
+
+        return response()->json(["status" => "success", "message" => "Provider Slabs Updated Successfully !"], 200);
+     }
+
     public function update_user_switch() {
        $session = session();
        if (!$session->get('admin_id')) {
@@ -846,6 +1155,7 @@ class Home extends BaseController
       
        $input = json_decode(request()->getContent());
        $userModel = new \App\Models\User();
+       $settlementType = isset($input->settlement_type) && in_array(strtolower($input->settlement_type), ['automatic', 'manual']) ? strtolower($input->settlement_type) : 'manual';
        $userModel->where('id', $input->user_id)->update([
           "package" => $input->package,
           "payin_provider" => $input->payin_provider,
@@ -853,7 +1163,8 @@ class Home extends BaseController
           "payin_limit" => $input->payin_limit,
           "payout_limit" => $input->payout_limit,
           "payout_per_limit" => $input->payout_per_limit,
-          "settlement_package" => $input->settlement_package
+          "settlement_package" => $input->settlement_package,
+          "settlement_type" => $settlementType
        ]);
        return response()->json(["status" => "success", "message" => "User Updated Successfully"], 200);
     }
@@ -912,7 +1223,7 @@ class Home extends BaseController
           }
        }
        $udata['password'] = password_hash($input->password, PASSWORD_DEFAULT);
-       $userModel->update($input->user_id,$udata);
+       $userModel->where('id', $input->user_id)->update($udata);
        return response()->json(["status" => "success", "message" => "User Details Successfully"], 200);
     }
     
@@ -1281,17 +1592,77 @@ class Home extends BaseController
         if(isset($input->daily_limit) && $input->daily_limit != ""){
             $udata["daily_limit"] = $input->daily_limit;
         }
-        if(strlen($input->logo) > 100) {
-            $binary = base64_decode(explode(",",$input->logo)[1]);
-            $fileName = "provider-logo-".rand(11111,99999).".png";
-            file_put_contents("./assets/".$fileName,$binary);
-            $udata['logo'] = env("app_baseURL")."assets/".$fileName;
-        }
+
         $providerModel = new \App\Models\Providers();
-        $providerModel->update($id,$udata);
+        $provider = $providerModel->find($id);
+        if (!$provider) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Provider not found'
+            ], 404);
+        }
+
+        if(isset($input->logo) && strlen($input->logo) > 100) {
+            $newLogo = $this->handleBase64Upload($input->logo, $provider->getRawOriginal('logo') ?? $provider->logo, 'assets', 'provider-logo-');
+            if ($newLogo) {
+                $udata['logo'] = $newLogo;
+            }
+        }
+
+        $providerModel->where('id', $id)->update($udata);
         return response()->json([
             'status' => 'success',
             'message' => 'Provider Details Updated Successfully'
+        ], 200);
+    }
+
+    public function create_provider() {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Unauthorized'
+            ], 401);
+        }
+        $input = json_decode(request()->getContent());
+        if(!$input || empty($input->name) || empty($input->gateway) || empty($input->type)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Provider Name, Gateway Name, and Type are required'
+            ], 400);
+        }
+        if(!in_array($input->type, ['payin', 'payout'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Invalid provider type'
+            ], 400);
+        }
+
+        $pdata = [
+            'name' => $input->name,
+            'gateway' => $input->gateway,
+            'type' => $input->type,
+            'daily_limit' => !empty($input->daily_limit) ? $input->daily_limit : '0',
+            'used_limit' => '0',
+            'active' => 1,
+            'logo' => ''
+        ];
+
+        if(isset($input->logo) && strlen($input->logo) > 100) {
+            $newLogo = $this->uploadBase64File($input->logo, 'assets', 'provider-logo-');
+            if ($newLogo) {
+                $pdata['logo'] = $newLogo;
+            }
+        }
+
+        $providerModel = new \App\Models\Providers();
+        $newProvider = $providerModel->create($pdata);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Provider Created Successfully',
+            'provider_id' => $newProvider->id,
+            'type' => $input->type
         ], 200);
     }
 

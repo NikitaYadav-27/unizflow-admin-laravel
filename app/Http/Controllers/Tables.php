@@ -65,7 +65,6 @@ class Tables extends BaseController
         }
         $filteredUsers = $filteredCountBuilder->count();
 
-        // Main query builder
         $builder = $userModel->query();
         $builder->selectRaw("
             users.*, 
@@ -76,7 +75,6 @@ class Tables extends BaseController
         $builder->leftJoin("packages", "packages.id", "=", "users.package");
         $builder->join("settlement_packages", "settlement_packages.id", "=", "users.settlement_package");
 
-        // LEFT JOIN subquery for today's collection
         $builder->leftJoin(\Illuminate\Support\Facades\DB::raw("( SELECT  user_id, SUM(amount) AS todays_collection 
                 FROM transactions 
                 WHERE status = 'Success' 
@@ -127,7 +125,6 @@ class Tables extends BaseController
                 "<i class='ti ti-wallet'></i>&nbsp;&nbsp;₹ " . $user->wallet,
                 $user->package,
 
-                // Active toggle
                 '<div class="custom-toggle-switch toggle-sm ms-2">
                     <input onchange="changeSwitch(\'' .
                 $user->id .
@@ -141,7 +138,6 @@ class Tables extends BaseController
                 '" class="label-primary"></label>
                  </div>',
 
-                // Payin toggle
                 '<div class="custom-toggle-switch toggle-sm ms-2">
                     <input onchange="changeSwitch(\'' .
                 $user->id .
@@ -155,7 +151,6 @@ class Tables extends BaseController
                 '" class="label-primary"></label>
                  </div>',
 
-                // Payout toggle
                 '<div class="custom-toggle-switch toggle-sm ms-2">
                     <input onchange="changeSwitch(\'' .
                 $user->id .
@@ -169,9 +164,13 @@ class Tables extends BaseController
                 '" class="label-primary"></label>
                  </div>',
 
-                // Today's Collection
                 "₹ " . round($user->todays_collection, 2),
-                $user->settlement_package,
+
+                '<div><span class="fw-semibold">' . htmlspecialchars($user->settlement_package ?? 'N/A') . '</span><br>' .
+                ((($user->settlement_type ?? 'manual') === 'automatic')
+                    ? '<span class="badge bg-success-transparent fs-10"><i class="ti ti-bolt me-1"></i>Automatic</span>'
+                    : '<span class="badge bg-secondary-transparent fs-10"><i class="ti ti-hand-stop me-1"></i>Manual</span>') .
+                '</div>',
                 $actions,
             ];
 
@@ -241,6 +240,74 @@ class Tables extends BaseController
         ], 200);
     }
 
+    public function settlement_packages()
+    {
+        $session = session();
+        $admin = new \App\Models\Admin();
+        $admin = $admin->find($session->get('admin_id'));
+
+        \App\Models\SettlementPackage::ensureSlotsTableExists();
+
+        $request = request();
+        $offset = (int) $request->input('start', 0);
+        $limit = (int) $request->input('length', 10);
+        $searchBy = $request->input('searchBy');
+        $searchValue = $request->input('searchValue');
+        $draw = (int) $request->input('draw');
+
+        $model = new \App\Models\SettlementPackage();
+        $totalPackages = $model->count();
+        $builder = $model->query()->with('slots');
+
+        if (!empty($searchValue)) {
+            $builder->where('name', 'like', "%{$searchValue}%");
+        }
+
+        $filteredPackages = $builder->count();
+        $packages = $builder->orderBy('id', 'DESC')->skip($offset)->take($limit)->get();
+
+        $data = [];
+        $index = $offset + 1;
+
+        foreach ($packages as $package) {
+            $slotCount = $package->slots->count();
+            $slotsHtml = '<div class="d-flex flex-wrap gap-1">';
+            if ($slotCount == 0) {
+                $slotsHtml .= '<span class="badge bg-light text-muted">No slots configured</span>';
+            } else {
+                foreach ($package->slots as $slot) {
+                    $slotsHtml .= '<span class="badge bg-primary-transparent me-1 p-2 text-start" style="font-size: 11px; line-height: 1.4;">'
+                        . '<i class="ti ti-clock me-1 text-primary"></i><strong>Slot ' . $slot->slot_number . ': ' . htmlspecialchars($slot->settlement_time) . '</strong><br>'
+                        . '<small class="text-muted"><i class="ti ti-calendar-time me-1"></i>Txns: ' . htmlspecialchars($slot->txn_from_time) . ' - ' . htmlspecialchars($slot->txn_to_time) . '</small>'
+                        . '</span>';
+                }
+            }
+            $slotsHtml .= '</div>';
+
+            $frequencyBadge = '<span class="badge bg-info-transparent fs-12 px-2 py-1"><i class="ti ti-repeat me-1"></i>' . $slotCount . ' ' . ($slotCount === 1 ? 'Time' : 'Times') . ' / Day</span>';
+
+            $actions = '';
+            $actions .= '<button onclick="navigate(\'/admin/settlement-package/edit/' . $this->encrypt($package->id) . '\');" class="btn btn-sm btn-warning-transparent me-1" title="Edit Package"><i class="ti ti-edit"></i> Edit</button>';
+            $actions .= '<button onclick="deleteSettlementPackage(\'' . $this->encrypt($package->id) . '\', \'' . htmlspecialchars(addslashes($package->name)) . '\');" class="btn btn-sm btn-danger-transparent" title="Delete Package"><i class="ti ti-trash"></i> Delete</button>';
+
+            $data[] = [
+                $index,
+                '<strong>' . htmlspecialchars($package->name) . '</strong>',
+                $frequencyBadge,
+                $slotsHtml,
+                $package->created_at ? date('d M Y, h:i A', strtotime($package->created_at)) : 'N/A',
+                $actions
+            ];
+            $index++;
+        }
+
+        return response()->json([
+            'draw' => $draw,
+            'recordsTotal' => $totalPackages,
+            'recordsFiltered' => $filteredPackages,
+            'data' => $data,
+        ], 200);
+    }
 
     public function settlements()
     {
@@ -1180,7 +1247,6 @@ class Tables extends BaseController
             $index++;
         }
 
-        // Return JSON response
         return response()->json([
             'draw' => $draw,
             'recordsTotal' => $totalCredits,
@@ -1210,9 +1276,7 @@ class Tables extends BaseController
         $builder->selectRaw("hold_wallet_transactions.*, users.name as username");
         $builder->join("users", "users.id", "=", "hold_wallet_transactions.user_id");
 
-        // status filter
         if ($status == "hold") {
-            // only "hold" entries that do not have a matching "released" entry for same txnid
             $builder->where("hold_wallet_transactions.type", "hold");
             $builder->whereRaw("NOT EXISTS (
             SELECT 1 FROM hold_wallet_transactions h2
@@ -1223,35 +1287,30 @@ class Tables extends BaseController
             $builder->where("hold_wallet_transactions.type", "released");
         }
 
-        // user filter
         if (!empty($userId)) {
             $builder->where("hold_wallet_transactions.user_id", $userId);
         }
 
-        // search filter
         if (!empty($searchBy) && !empty($searchVal)) {
             if (in_array($searchBy, $availableSearchKeys)) {
                 $builder->like("hold_wallet_transactions." . $searchBy, $searchVal);
             }
         }
 
-        // total count
         $totalBuilder = clone $builder;
         $recordsFiltered = $totalBuilder->count();
         $recordsTotal = $holdWalletModel->count();
 
-        // pagination
         $builder->orderBy('hold_wallet_transactions.id', "DESC");
         if ($limit != -1) {
             $builder->limit($limit, $offset);
         }
 
-        $transactions = $builder->get()->map(function($i){return (array)$i;})->toArray();
+        $transactions = $builder->get();
        
         $data = [];
         $index = $offset + 1;
         foreach ($transactions as $txn) {
-            print_r($txn);
             $row = [];
             $row[] = $index;
             $row[] = $txn->user_id;
@@ -1263,7 +1322,6 @@ class Tables extends BaseController
             $row[] = $txn->processed ? "Yes" : "No";
             $row[] = $txn->created_at;
             $row[] = $txn->updated_at;
-            // action button (example)
             $row[] = '<button onclick="releaseHold(\'' . $txn->id . '\')" class="btn btn-sm btn-primary-transparent"><i class="ti ti-check"></i></button>';
 
             $data[] = $row;

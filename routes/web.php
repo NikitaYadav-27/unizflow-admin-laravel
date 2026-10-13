@@ -77,8 +77,17 @@ Route::get('/admin/transactions/{type}', [Home::class, 'transactions']);
 
 Route::get('/admin/settlements/{status}', [Home::class, 'settlements']);
 
+Route::get('/admin/settlement-packages', [Home::class, 'settlement_packages']);
+Route::get('/admin/settlement-packages/add', [Home::class, 'add_settlement_package']);
+Route::get('/admin/settlement-package/edit/{id}', [Home::class, 'edit_settlement_package']);
+Route::get('/api/tables/settlement-packages', [Tables::class, 'settlement_packages']);
+Route::post('/api/admin/settlement-package/create', [Home::class, 'create_settlement_package']);
+Route::post('/api/admin/settlement-package/update', [Home::class, 'update_settlement_package']);
+Route::post('/api/admin/settlement-package/delete', [Home::class, 'delete_settlement_package']);
+
 Route::get('/api/tables/settlements', [Tables::class, 'settlements']);
 Route::post('/api/admin/settlement/settle-to-wallet', [Home::class, 'settle_to_wallet']);
+Route::post('/api/admin/settlements/trigger-auto', [Home::class, 'trigger_auto_settlements']);
 
 Route::get('/admin/settlements-batch/{id}', [Home::class, 'settlements_batch']);
 Route::get('/api/tables/payin_transactions', [Tables::class, 'payin_transactions']);
@@ -183,6 +192,7 @@ Route::post('/api/admin/settlements/settle-to-bank', [Home::class, 'update_settl
 Route::get('/api/admin/transactions/checker/{id}', [Checker::class, 'index']);
 
 Route::post('/api/admin/providers/update/{id}', [Home::class, 'update_provider']);
+Route::post('/api/admin/providers/create', [Home::class, 'create_provider']);
 
 Route::get('/admin/error-logs', [Home::class, 'error_logs']);
 Route::get('/api/tables/error_logs', [Tables::class, 'error_logs']);

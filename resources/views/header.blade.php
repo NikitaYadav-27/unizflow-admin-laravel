@@ -474,10 +474,8 @@
                                 <span class="side-menu__label">Wallet Ledger</span>
                             </a>
                         </li>
-                        <!-- End::slide -->
                          
-                         <!-- Start::slide -->
-                        <li class="slide has-sub <?= in_array($page,["settlement_pending","settlement_completed","settlement_hold"])?"open":"" ?>">
+                        <li class="slide has-sub <?= in_array($page,["settlement_pending","settlement_completed","settlement_hold","settlement_packages","add_settlement_package"])?"open":"" ?>">
                             <a class="side-menu__item">
                                 <i class="ti ti-receipt side-menu__icon"></i>
                                 <span class="side-menu__label">Settlements</span>
@@ -491,6 +489,10 @@
                 
                                 <li class="slide"><a onclick="navigate('/admin/settlements/completed'); activeNavigation(this);" class="side-menu__item <?=  $page == "settlement_completed"?"active":""?>"><i class="ti ti-circle-check mx-2"></i> Completed</a></li>
                           
+                                <li class="slide"><a onclick="navigate('/admin/settlement-packages'); activeNavigation(this);" class="side-menu__item <?=  $page == "settlement_packages"?"active":""?>"><i class="ti ti-box mx-2"></i> Settlement Packages</a></li>
+
+                                <li class="slide"><a onclick="navigate('/admin/settlement-packages/add'); activeNavigation(this);" class="side-menu__item <?=  $page == "add_settlement_package"?"active":""?>"><i class="ti ti-circle-plus mx-2"></i> Add Package</a></li>
+
                             </ul>
                         </li>
                         <!-- End::slide -->
