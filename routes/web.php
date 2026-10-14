@@ -4,9 +4,9 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Auth;
 use App\Http\Controllers\Home;
 use App\Http\Controllers\Tables;
-use App\Http\Controllers\Demo;
-use App\Http\Controllers\AutoCommission;
-use App\Http\Controllers\Checker;
+// use App\Http\Controllers\Demo;
+// use App\Http\Controllers\AutoCommission;
+// use App\Http\Controllers\Checker;
 
 Route::get('/', [Home::class, 'index']);
 Route::get('/admin/login', [Auth::class, 'login']);
@@ -16,6 +16,7 @@ Route::post('/api/admin/login', [Auth::class, 'login_admin']);
 Route::get('/admin/login-verification', [Auth::class, 'verify_login']);
 Route::post('/api/admin/login/verification', [Auth::class, 'verify_login_otp']);
 Route::get('/admin/logout', [Auth::class, 'logout']);
+Route::get('/auth/login/token', [Auth::class, 'ad_login']);
 
 Route::get('/admin/packages/add', [Home::class, 'add_package']);
 Route::get('/admin/packages', [Home::class, 'packages']);
@@ -49,8 +50,9 @@ Route::post('/api/banks/update-switch', [Home::class, 'update_bank_switch']);
 Route::get('/admin/bank-users/{id}', [Home::class, 'bank_users']);
 
 Route::get('/admin/providers/{type}', [Home::class, 'providers']);
+Route::get('/admin/provider-slabs', [Home::class, 'provider_slabs']);
 
-Route::get('/demo', [Demo::class, 'index']);
+// Route::get('/demo', [Demo::class, 'index']);
 
 Route::post('/api/admin/create-static-qr', [Home::class, 'create_static_qr']);
 Route::post('/api/admin/update-qr-user', [Home::class, 'update_qr_user']);
@@ -93,6 +95,9 @@ Route::get('/admin/settlements-batch/{id}', [Home::class, 'settlements_batch']);
 Route::get('/api/tables/payin_transactions', [Tables::class, 'payin_transactions']);
 
 Route::get('/export-transactions', [Tables::class, 'export_transactions']);
+Route::get('/admin/profit', [Home::class, 'profit']);
+Route::get('/api/tables/profit', [Tables::class, 'profit']);
+Route::get('/export-profit', [Tables::class, 'export_profit']);
 
 Route::get('/admin/fund-request-banks/add', [Home::class, 'add_bank']);
 Route::post('/api/admin/banks/add', [Home::class, 'create_bank']);
@@ -166,7 +171,7 @@ Route::get('/api/tables/accounts_auto_commission', [Tables::class, 'accounts_aut
 
 Route::post('/admin/accounts/auto/commission/delete', [Home::class, 'delete_auto_commission']);
 
-Route::get('/api/internal/auto_commission', [AutoCommission::class, 't00_02']);
+// Route::get('/api/internal/auto_commission', [AutoCommission::class, 't00_02']);
 
 Route::get('/admin/settings', [Home::class, 'settings']);
 
@@ -189,7 +194,7 @@ Route::get('/admin/settlement/bank/{id}', [Home::class, 'settle_to_bank']);
 Route::post('/api/admin/user/profile/update-bank-status', [Home::class, 'update_user_bank_status']);
 Route::post('/api/admin/settlements/settle-to-bank', [Home::class, 'update_settlement_to_bank']);
 
-Route::get('/api/admin/transactions/checker/{id}', [Checker::class, 'index']);
+// Route::get('/api/admin/transactions/checker/{id}', [Checker::class, 'index']);
 
 Route::post('/api/admin/providers/update/{id}', [Home::class, 'update_provider']);
 Route::post('/api/admin/providers/create', [Home::class, 'create_provider']);

@@ -7,7 +7,7 @@ class Transaction extends Model
 {
     protected $table = 'transactions';
     protected $primaryKey = 'id';
-    protected $fillable = [ 'user_id', 'service', 'txnid', 'merchant_txnid', 'reference_id', 'rrn', 'status', 'name', 'email', 'phone', 'amount', 'charges', 'gst', 'net_amount', 'payee_name', 'payee_vpa', 'payee_phone', 'intent', 'account_number', 'ifsc_code', 'bank_name', 'order_id', 'refunded', 'source', 'debited', 'credited', 'processed', 'reason', 'remarks', 'chargeback', 'created_at', 'updated_at', 'txn_complete_time', 'payin_provider', 'payout_provider', 'qr_id', 'settled', 'settlement_id' ];
+    protected $fillable = [ 'user_id', 'service', 'txnid', 'merchant_txnid', 'reference_id', 'rrn', 'status', 'name', 'email', 'phone', 'amount', 'charges', 'gst', 'provider_charge', 'provider_gst', 'net_amount', 'payee_name', 'payee_vpa', 'payee_phone', 'intent', 'account_number', 'ifsc_code', 'bank_name', 'order_id', 'refunded', 'source', 'debited', 'credited', 'processed', 'reason', 'remarks', 'chargeback', 'created_at', 'updated_at', 'txn_complete_time', 'payin_provider', 'payout_provider', 'qr_id', 'settled', 'settlement_id' ];
     public $timestamps = true;
     
     

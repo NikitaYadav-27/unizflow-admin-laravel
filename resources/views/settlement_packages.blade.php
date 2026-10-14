@@ -143,6 +143,10 @@
     }
 </script>
 
+<script class="afterLoadScript" type="text/plain">
+    initSettlementPackagesTable();
+</script>
+
 <?php if (!isset($_GET['turbo'])) {
     echo view('footer', get_defined_vars());
 } ?>

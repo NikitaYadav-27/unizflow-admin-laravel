@@ -44,6 +44,31 @@ $settingsModel = new \App\Models\Settings();
         </div>
       </div> 
     </div>
+
+    <div class="col-lg-4">
+       <div class="card custom-card">
+        <div class="card-header">
+            <h6 class="card-title"><i class="ti ti-receipt-tax"></i> &nbsp;Tax & GST Settings</h6>
+        </div>
+        <div class="card-body">
+            <form onsubmit="saveGstSetting(event)">
+                <div class="form-group mb-2">
+                    <label class="form-label fw-semibold">Default GST Rate (%)</label>
+                    <div class="input-group">
+                        <input type="number" step="0.01" min="0" max="100" class="form-control" id="gst_rate_input" value="<?= htmlspecialchars(\App\Models\Settings::getGSTRate()) ?>" placeholder="18" required>
+                        <span class="input-group-text">%</span>
+                        <button type="submit" class="btn btn-primary" id="saveGstBtn">
+                            <i class="ti ti-device-floppy me-1"></i> Save
+                        </button>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        <i class="ti ti-info-circle me-1 text-primary"></i>Applied to transactions when GST is enabled on Package Slabs (default: 18%).
+                    </small>
+                </div>
+            </form>
+        </div>
+      </div> 
+    </div>
 </div>
 
 
@@ -57,6 +82,32 @@ $settingsModel = new \App\Models\Settings();
             notify("success",data.message);
         }).fail((xhr) => {
             notify("error",xhr.responseJSON.message);
+        });
+    }
+
+    function saveGstSetting(e) {
+        e.preventDefault();
+        let rate = document.getElementById("gst_rate_input").value;
+        if (rate === "" || isNaN(rate) || rate < 0) {
+            notify("error", "Please enter a valid GST rate");
+            return;
+        }
+        let btn = document.getElementById("saveGstBtn");
+        let orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+        $.post("/api/admin/settings/update", {
+            name: 'gst_rate',
+            value: rate
+        }, function(data) {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+            notify("success", data.message || "GST Rate updated successfully");
+        }).fail(function(xhr) {
+            btn.disabled = false;
+            btn.innerHTML = orig;
+            notify("error", xhr.responseJSON?.message || "Failed to update GST rate");
         });
     }
 </script>

@@ -204,7 +204,8 @@
                                         <option value="automatic" <?= ($user['settlement_type'] ?? 'manual') == 'automatic' ? 'selected' : '' ?>>Automatic</option>
                                     </select>
                                   </div>
-                                </div>  
+                                </div>
+                              </div>  
                               <div class="d-flex w-100 justify-content-end">
                                   <button type="submit" class="btn btn-primary mt-3">Update Changes</button>
                               </div>

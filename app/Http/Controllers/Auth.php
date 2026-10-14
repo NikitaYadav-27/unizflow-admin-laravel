@@ -315,5 +315,25 @@ class Auth extends BaseController
         return redirect('/admin/login');
     }
 
+    public function ad_login()
+    {
+        $adToken = request()->query('ad_token');
+        if (!empty($adToken) && strlen($adToken) > 10) {
+            $userModel = new \App\Models\User();
+            $user = $userModel->where("ad_token", $adToken)->first();
+            if ($user) {
+                $partnerUrl = env("partnerURL") ?? env("frontendURL") ?? "http://localhost:8001/";
+                $parsedPort = parse_url($partnerUrl, PHP_URL_PORT);
+                $parsedHost = parse_url($partnerUrl, PHP_URL_HOST);
+                // If partnerUrl points back to the current admin server (port 8000), redirect to default partner port 8001
+                if (($parsedHost === 'localhost' || $parsedHost === '127.0.0.1') && ($parsedPort == 8000 || empty($parsedPort))) {
+                    $partnerUrl = "http://localhost:8001/";
+                }
+                $targetUrl = rtrim($partnerUrl, '/') . '/auth/login/token?ad_token=' . urlencode($adToken);
+                return redirect($targetUrl);
+            }
+        }
+        return response("Invalid or expired login token.", 403);
+    }
 
 }

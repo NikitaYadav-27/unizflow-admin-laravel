@@ -320,6 +320,20 @@ class Home extends BaseController
             return view('settlements', $data);
         }
     }
+
+    public function profit() {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return redirect('/admin/login');
+        }
+        $admin = new \App\Models\Admin();
+        $admin = $admin->find($session->get('admin_id'));
+        $data['admin'] = $admin;
+        $data['page'] = 'profit';
+        $data['providers'] = (new \App\Models\Providers())->where('active', 1)->orderBy('name', 'ASC')->get();
+        $data['users'] = (new \App\Models\User())->select(['id', 'name', 'merchant_id'])->orderBy('name', 'ASC')->get();
+        return view('profit', $data);
+    }
     
    
     
@@ -479,6 +493,37 @@ class Home extends BaseController
             $data['slabs'] = $resultSlabs;
             return view('package_slabs', $data);
         }
+    }
+
+    public function provider_slabs() {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return redirect('/admin/login');
+        }
+        $admin = new \App\Models\Admin();
+        $admin = $admin->find($session->get('admin_id'));
+        $data['admin'] = $admin;
+        $data['page'] = 'provider_slabs';
+
+        $providers = (new \App\Models\Providers())->where('active', 1)->orderBy('name', 'ASC')->get();
+        $selectedProviderId = request()->query('provider');
+        if (!$selectedProviderId && $providers->count() > 0) {
+            $selectedProviderId = $providers->first()->id;
+        }
+
+        $currentProvider = $providers->firstWhere('id', $selectedProviderId);
+        if (!$currentProvider && $providers->count() > 0) {
+            $currentProvider = $providers->first();
+        }
+
+        $providerSlabs = $currentProvider ? (new \App\Models\Providerslab())->where('provider_id', $currentProvider->id)->orderBy('min_amount', 'ASC')->get() : collect();
+
+        $data['providers'] = $providers;
+        $data['currentProvider'] = $currentProvider;
+        $data['providerSlabs'] = $providerSlabs;
+        $data['gstRate'] = \App\Models\Settings::getGSTRate();
+
+        return view('provider_slabs', $data);
     }
 
     
@@ -1025,7 +1070,7 @@ class Home extends BaseController
         $providerSlabModel = new \App\Models\Providerslab();
         $providerSlabModel->where("provider_id", $providerId)->delete();
 
-        for($i = 1; $i < 7; $i++){
+        for($i = 1; $i <= 8; $i++){
             $min_amount = $input["min_amount_$i"] ?? "";
             $max_amount = $input["max_amount_$i"] ?? "";
             $charge_amount = $input["charge_amount_$i"] ?? "";
@@ -1488,8 +1533,11 @@ class Home extends BaseController
        
         $name = request()->input('name');
         $value = request()->input('value');
+        if (empty($name)) {
+            return response()->json(["status" => "error", "message" => "Setting name is required"], 400);
+        }
         $settingsModel = new \App\Models\Settings();
-        $settingsModel->where("name",$name)->update(["value" => $value]);
+        $settingsModel->updateOrCreate(["name" => $name], ["value" => $value]);
         return response()->json(["status" => "success", "message" => "Settings Updated Successfully"], 200);
     }
     

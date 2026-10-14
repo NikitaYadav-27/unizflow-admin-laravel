@@ -10,8 +10,15 @@ class Settings extends Model
     protected $primaryKey = 'id';
     public $timestamps = true;
     protected $fillable = ['name', 'value'];
-    
-    
+
+    public static function getGSTRate(): float
+    {
+        $row = self::where('name', 'gst_rate')->first();
+        if ($row && $row->value !== null && $row->value !== '' && is_numeric($row->value)) {
+            return floatval($row->value);
+        }
+        return 18.0;
+    }
 
     public function isPayinEnabled(): bool
     {

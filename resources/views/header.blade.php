@@ -362,20 +362,20 @@
                         <!-- End::slide -->
                        
                          <!-- Start::slide -->
-                        <li class="slide has-sub <?= in_array($page,["payin_providers","payout_providers","qr_providers"])?"open":"" ?>">
+                        <li class="slide has-sub <?= in_array($page,["payin_providers","payout_providers","qr_providers","provider_slabs"])?"open":"" ?>">
                             <a class="side-menu__item">
                                 <i class="ti ti-building-bank side-menu__icon"></i>
                                 <span class="side-menu__label">Providers</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
                             <ul class="slide-menu child1" data-popper-placement="bottom" style="position: relative; left: 0px; top: 0px; margin: 0px; transform: translate3d(119.5px, 173.5px, 0px);">
-                               
+                                
                                 <li class="slide"><a onclick="navigate('/admin/providers/payin'); activeNavigation(this);" class="side-menu__item <?=  $page == "payin_providers"?"active":""?>"><i class="ti ti-arrow-down-left mx-2"></i> Payin Providers</a></li>
                 
                                 <li class="slide"><a onclick="navigate('/admin/providers/payout'); activeNavigation(this);" class="side-menu__item <?=  $page == "payout_providers"?"active":""?>"><i class="ti ti-arrow-up-right mx-2"></i>Payout Providers</a></li>
                                 
-                               
-                               
+                                <li class="slide"><a onclick="navigate('/admin/provider-slabs'); activeNavigation(this);" class="side-menu__item <?=  $page == "provider_slabs"?"active":""?>"><i class="ti ti-list-check mx-2"></i>Provider Slabs</a></li>
+                                
                             </ul>
                         </li>
                         <!-- End::slide -->
@@ -506,6 +506,18 @@
                        
                      
                          <!-- Start::slide -->
+                        <li class="slide">
+                            <a onclick="navigate('/admin/profit'); activeNavigation(this);"
+                                class="side-menu__item <?php if ($page == "profit") {
+                                    echo "active";
+                                } ?>">
+                                <i class="ti ti-chart-arrows-vertical side-menu__icon"></i>
+                                <span class="side-menu__label">Admin Profit</span>
+                            </a>
+                        </li>
+                        <!-- End::slide -->
+
+                        <!-- Start::slide -->
                         <li class="slide">
                             <a onclick="navigate('/admin/error-logs'); activeNavigation(this);"
                                 class="side-menu__item <?php if ($page == "error_logs") {

@@ -176,6 +176,8 @@
         window.endDate = end.format("YYYY-MM-DD");
 
         window.dataTable = $("#dataTable").dataTable({
+            bDestroy: true,
+            destroy: true,
             bFilter: false,
             bLengthChange: false,
             serverSide: true,
@@ -183,6 +185,9 @@
             paging: true,
             ordering: false,
             pageLength: 10,
+            columnDefs: [
+                { defaultContent: "-", targets: "_all" }
+            ],
             ajax: {
                 url: "/api/tables/error_logs",
                 type: "GET",
@@ -261,6 +266,10 @@
     window.onloads.push(getLogs);
 </script>
 
+<script class="afterLoadScript" type="text/plain">
+    getLogs();
+</script>
+
 <?php if (!isset($_GET['turbo'])) {
-    echo view('footer');
+    echo view('footer', get_defined_vars());
 } ?>

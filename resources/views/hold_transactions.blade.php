@@ -122,12 +122,17 @@
     function getTransactions() {
         window.dataTable = $("#dataTable").dataTable(
             {
+                "bDestroy": true,
+                "destroy": true,
                 "bFilter": false,
                 "bLengthChange": false,
                 "serverSide": true,
                 "processing": true,
                 "paging": true,
                 "ordering" : false,
+                "columnDefs": [
+                    { "defaultContent": "-", "targets": "_all" }
+                ],
                 "ajax": {
                     "url": "/api/tables/hold_transactions",
                     "type": "GET",

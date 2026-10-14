@@ -190,6 +190,8 @@
     
         window.dataTable = $("#dataTable").dataTable(
             {
+                "bDestroy": true,
+                "destroy": true,
                 "bFilter": false,
                 "bLengthChange": false,
                 "serverSide": true,
@@ -197,6 +199,9 @@
                 "paging": true,
                 "ordering" : false,
                 "pageLength": 50,
+                "columnDefs": [
+                    { "defaultContent": "-", "targets": "_all" }
+                ],
                 "ajax": {
                     "url": "/api/tables/settlements",
                     "type": "GET",
@@ -233,6 +238,7 @@
         if (window.searchBy != "") {
             window.dataTable.DataTable().ajax.reload();
         }
+    }
 
     function triggerAutoSettlement(btn) {
         let orig = btn.innerHTML;

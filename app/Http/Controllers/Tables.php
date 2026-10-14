@@ -377,25 +377,25 @@ class Tables extends BaseController
 
             $row = [
                 $index,
-                $settlement->name,
-                $settlement->batch_id,
-                "₹ " . $settlement->amount,
-                "₹ " . $settlement->charges,
-                "₹ " . $settlement->gst,
-                "₹ " . $settlement->net_amount,
-                $settlement->status == "Success"
+                $settlement->name ?? "N/A",
+                $settlement->batch_id ?? "N/A",
+                "₹ " . ($settlement->amount ?? 0),
+                "₹ " . ($settlement->charges ?? 0),
+                "₹ " . ($settlement->gst ?? 0),
+                "₹ " . ($settlement->net_amount ?? 0),
+                ($settlement->status == "Success")
                     ? ($settlement->settle_to == "wallet"
                         ? '<span class="badge bg-primary-transparent"><i class="ti ti-wallet"></i>&nbsp;&nbsp; Wallet</span>'
                         : '<span class="badge bg-success-transparent"><i class="ti ti-building-bank"></i>&nbsp;&nbsp; Bank</span>')
                     : 'NA',
-                $settlement->txnid,
-                $this->getStatusSpan($settlement->status),
-                $settlement->created_at,
-                $settlement->status == "Success" ? $settlement->updated_at : "NA",
+                $settlement->txnid ?? 'NA',
+                $this->getStatusSpan($settlement->status ?? 'Pending'),
+                $settlement->created_at ?? 'NA',
+                ($settlement->status == "Success" && $settlement->updated_at) ? $settlement->updated_at : "NA",
                 '<button onclick="navigate(\'/admin/settlements-batch/' . $encId . '\')" class="btn btn-sm btn-primary-transparent"><i class="ti ti-list"></i>&nbsp;&nbsp;' . $totalTransactions . '</button>',
             ];
 
-            if ($status == "Pending" || $status == "pending" || $status == "hold") {
+            if (strtolower($status) == "pending" || strtolower($status) == "hold") {
                 $row[] = $actions;
             }
 
@@ -1313,16 +1313,20 @@ class Tables extends BaseController
         foreach ($transactions as $txn) {
             $row = [];
             $row[] = $index;
-            $row[] = $txn->user_id;
-            $row[] = $txn->txnid;
-            $row[] = "₹ " . $txn->amount;
-            $row[] = $txn->reason;
-            $row[] = $txn->opening;
-            $row[] = $txn->closing;
-            $row[] = $txn->processed ? "Yes" : "No";
-            $row[] = $txn->created_at;
-            $row[] = $txn->updated_at;
-            $row[] = '<button onclick="releaseHold(\'' . $txn->id . '\')" class="btn btn-sm btn-primary-transparent"><i class="ti ti-check"></i></button>';
+            $row[] = $txn->username ?? ("User #" . $txn->user_id);
+            $row[] = '<span class="badge bg-' . ($txn->type == 'hold' ? 'danger' : 'success') . '-transparent text-uppercase">' . ($txn->type ?? 'HOLD') . '</span>';
+            $row[] = $txn->txnid ?? 'N/A';
+            $row[] = "₹ " . ($txn->amount ?? 0);
+            $row[] = ($txn->type == 'hold')
+                ? '<span class="badge bg-warning-transparent">On Hold</span>'
+                : '<span class="badge bg-success-transparent">Released</span>';
+            $row[] = $txn->reason ?? 'N/A';
+            $row[] = $txn->created_at ?? 'N/A';
+            if ($status == "hold") {
+                $row[] = '<button onclick="releaseHold(\'' . $txn->id . '\')" class="btn btn-sm btn-primary-transparent" title="Release Hold"><i class="ti ti-check"></i> Release</button>';
+            } else {
+                $row[] = $txn->updated_at ?? 'N/A';
+            }
 
             $data[] = $row;
             $index++;
@@ -1541,5 +1545,325 @@ class Tables extends BaseController
             'recordsFiltered' => $filteredErrorLogs,
             'data' => $data,
         ], 200);
+    }
+
+    public function profit()
+    {
+        $session = session();
+        $admin = new \App\Models\Admin();
+        $admin = $admin->find($session->get('admin_id'));
+
+        $request = request();
+        $offset = (int) $request->input('start', 0);
+        $limit = (int) $request->input('length', 10);
+        $draw = (int) $request->input('draw', 1);
+
+        $startDate = $request->input('startDate') ? ($request->input('startDate') . " 00:00:00") : date('Y-m-d 00:00:00', strtotime('-6 days'));
+        $endDate = $request->input('endDate') ? ($request->input('endDate') . " 23:59:59") : date('Y-m-d 23:59:59');
+
+        $service = $request->input('service');
+        $providerId = $request->input('provider');
+        $userId = $request->input('user_id');
+        $searchValue = trim($request->input('searchValue', ''));
+
+        $transactionModel = new \App\Models\Transaction();
+        $builder = $transactionModel->query();
+        $builder->selectRaw("transactions.*, users.name as user_name, users.merchant_id as merchant_id");
+        $builder->join("users", "users.id", "=", "transactions.user_id");
+        $builder->where("transactions.status", "Success");
+        $builder->whereBetween("transactions.created_at", [$startDate, $endDate]);
+
+        if (!empty($service) && in_array($service, ['payin', 'payout'])) {
+            $builder->where("transactions.service", $service);
+        }
+
+        if (!empty($userId)) {
+            $builder->where("transactions.user_id", $userId);
+        }
+
+        if (!empty($providerId)) {
+            $builder->where(function($q) use ($providerId) {
+                $q->where("transactions.payin_provider", $providerId)
+                  ->orWhere("transactions.payout_provider", $providerId);
+            });
+        }
+
+        if (!empty($searchValue)) {
+            $builder->where(function($q) use ($searchValue) {
+                $q->where("transactions.txnid", "like", "%{$searchValue}%")
+                  ->orWhere("transactions.merchant_txnid", "like", "%{$searchValue}%")
+                  ->orWhere("transactions.reference_id", "like", "%{$searchValue}%")
+                  ->orWhere("users.name", "like", "%{$searchValue}%");
+            });
+        }
+
+        $allProviders = \App\Models\Providers::all()->keyBy('id');
+        $allSlabs = \App\Models\Providerslab::all();
+        $gstRate = \App\Models\Settings::getGSTRate();
+
+        $filteredTransactionsCount = (clone $builder)->count();
+        $allFilteredList = (clone $builder)->select([
+            'transactions.amount',
+            'transactions.charges',
+            'transactions.gst',
+            'transactions.provider_charge',
+            'transactions.provider_gst',
+            'transactions.service',
+            'transactions.payin_provider',
+            'transactions.payout_provider'
+        ])->get();
+
+        $totalVolume = 0.0;
+        $totalPartnerCharge = 0.0;
+        $totalProviderCharge = 0.0;
+
+        foreach ($allFilteredList as $item) {
+            $amt = floatval($item->amount);
+            $totalVolume += $amt;
+            $pTotal = floatval($item->charges) + floatval($item->gst);
+            $totalPartnerCharge += $pTotal;
+
+            $provBase = floatval($item->provider_charge ?? 0);
+            $provGst = floatval($item->provider_gst ?? 0);
+            $provTotal = $provBase + $provGst;
+
+            // Fallback for legacy rows if not stored
+            if ($provTotal <= 0 && $amt > 0) {
+                $pId = ($item->service === 'payout') ? $item->payout_provider : $item->payin_provider;
+                $matchedSlab = $allSlabs->first(function($s) use ($pId, $amt) {
+                    return $s->provider_id == $pId && $amt >= floatval($s->min_amount) && $amt <= floatval($s->max_amount);
+                });
+                if ($matchedSlab) {
+                    $c = $matchedSlab->percent ? ($matchedSlab->amount * $amt) / 100 : floatval($matchedSlab->amount);
+                    $g = $matchedSlab->gst ? ($c * $gstRate) / 100 : 0.0;
+                    $provTotal = $c + $g;
+                }
+            }
+
+            $totalProviderCharge += $provTotal;
+        }
+
+        $totalProfit = $totalPartnerCharge - $totalProviderCharge;
+        $overallMargin = ($totalVolume > 0) ? ($totalProfit / $totalVolume) * 100 : 0.0;
+
+        $builder->orderBy('transactions.id', 'DESC');
+        if ($limit != -1) {
+            $builder->skip($offset)->take($limit);
+        }
+        $transactions = $builder->get();
+
+        $data = [];
+        $index = $offset + 1;
+
+        foreach ($transactions as $txn) {
+            $amt = floatval($txn->amount);
+            $pCharge = floatval($txn->charges);
+            $pGst = floatval($txn->gst);
+            $partnerTotal = $pCharge + $pGst;
+
+            $provId = ($txn->service === 'payout') ? $txn->payout_provider : $txn->payin_provider;
+            $providerObj = $allProviders->get($provId);
+            $providerName = $providerObj ? $providerObj->name : 'N/A';
+
+            // Fetch directly from transaction table entry
+            $provBase = floatval($txn->provider_charge ?? 0);
+            $provGst = floatval($txn->provider_gst ?? 0);
+            $providerTotal = $provBase + $provGst;
+
+            if ($providerTotal <= 0 && $amt > 0) {
+                $matchedSlab = $allSlabs->first(function($s) use ($provId, $amt) {
+                    return $s->provider_id == $provId && $amt >= floatval($s->min_amount) && $amt <= floatval($s->max_amount);
+                });
+                if ($matchedSlab) {
+                    $provBase = $matchedSlab->percent ? ($matchedSlab->amount * $amt) / 100 : floatval($matchedSlab->amount);
+                    $provGst = $matchedSlab->gst ? ($provBase * $gstRate) / 100 : 0.0;
+                    $providerTotal = $provBase + $provGst;
+                    $rateLabel = $matchedSlab->percent ? ($matchedSlab->amount . '%') : ('₹' . $matchedSlab->amount);
+                } else {
+                    $rateLabel = 'No Slab';
+                }
+            } else {
+                $rateLabel = 'Base: ₹' . number_format($provBase, 2);
+            }
+
+            $profit = $partnerTotal - $providerTotal;
+            $marginPct = ($amt > 0) ? ($profit / $amt) * 100 : 0.0;
+
+            $serviceBadge = ($txn->service === 'payin')
+                ? '<span class="badge bg-success-transparent"><i class="ti ti-arrow-down-left me-1"></i>PayIn</span>'
+                : '<span class="badge bg-danger-transparent"><i class="ti ti-arrow-up-right me-1"></i>PayOut</span>';
+
+            $profitBadge = ($profit >= 0)
+                ? '<span class="badge bg-success-transparent fs-12 fw-semibold text-success"><i class="ti ti-trending-up me-1"></i>+₹ ' . number_format($profit, 2) . '</span>'
+                : '<span class="badge bg-danger-transparent fs-12 fw-semibold text-danger"><i class="ti ti-trending-down me-1"></i>-₹ ' . number_format(abs($profit), 2) . '</span>';
+
+            $partnerCell = '<div><strong>₹ ' . number_format($partnerTotal, 2) . '</strong><br>'
+                . '<small class="text-muted">Fee: ₹' . number_format($pCharge, 2) . ($pGst > 0 ? (' + GST ₹' . number_format($pGst, 2)) : '') . '</small></div>';
+
+            $providerCell = '<div><strong>₹ ' . number_format($providerTotal, 2) . '</strong><br>'
+                . '<small class="text-muted">' . htmlspecialchars($rateLabel) . ($provGst > 0 ? (' + GST ₹' . number_format($provGst, 2)) : '') . '</small></div>';
+
+            $marginCell = '<span class="fw-semibold ' . ($marginPct >= 0 ? 'text-success' : 'text-danger') . '">'
+                . number_format($marginPct, 2) . '%</span>';
+
+            $data[] = [
+                $index,
+                '<div><span class="fw-semibold">' . htmlspecialchars($txn->txnid) . '</span><br>' . $serviceBadge . '</div>',
+                '<div>' . date('d M Y', strtotime($txn->created_at)) . '<br><small class="text-muted">' . date('h:i A', strtotime($txn->created_at)) . '</small></div>',
+                '<div><span class="fw-semibold">' . htmlspecialchars($txn->user_name) . '</span><br><small class="text-muted">' . htmlspecialchars($txn->merchant_id ?? '') . '</small></div>',
+                '<span class="badge bg-info-transparent">' . htmlspecialchars($providerName) . '</span>',
+                '<strong class="fs-13">₹ ' . number_format($amt, 2) . '</strong>',
+                $partnerCell,
+                $providerCell,
+                $profitBadge,
+                $marginCell
+            ];
+
+            $index++;
+        }
+
+        $totalOverall = \App\Models\Transaction::where('status', 'Success')->count();
+
+        return response()->json([
+            'draw' => $draw,
+            'recordsTotal' => $totalOverall,
+            'recordsFiltered' => $filteredTransactionsCount,
+            'data' => $data,
+            'summary' => [
+                'total_volume' => '₹ ' . number_format($totalVolume, 2),
+                'partner_charge' => '₹ ' . number_format($totalPartnerCharge, 2),
+                'provider_charge' => '₹ ' . number_format($totalProviderCharge, 2),
+                'profit' => '₹ ' . number_format($totalProfit, 2),
+                'profit_raw' => $totalProfit,
+                'margin' => number_format($overallMargin, 2) . '%'
+            ]
+        ], 200);
+    }
+
+    public function export_profit()
+    {
+        $session = session();
+        $admin = new \App\Models\Admin();
+        $admin = $admin->find($session->get('admin_id'));
+
+        $filename = 'admin_profit_report_' . date('Ymd_His') . '.csv';
+        header('Content-Type: text/csv');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+
+        $request = request();
+        $startDate = $request->input('startDate') ? ($request->input('startDate') . " 00:00:00") : date('Y-m-d 00:00:00', strtotime('-6 days'));
+        $endDate = $request->input('endDate') ? ($request->input('endDate') . " 23:59:59") : date('Y-m-d 23:59:59');
+        $service = $request->input('service');
+        $providerId = $request->input('provider');
+        $userId = $request->input('user_id');
+        $searchValue = trim($request->input('searchValue', ''));
+
+        $builder = (new \App\Models\Transaction())->query();
+        $builder->selectRaw("transactions.*, users.name as user_name, users.merchant_id as merchant_id");
+        $builder->join("users", "users.id", "=", "transactions.user_id");
+        $builder->where("transactions.status", "Success");
+        $builder->whereBetween("transactions.created_at", [$startDate, $endDate]);
+
+        if (!empty($service) && in_array($service, ['payin', 'payout'])) {
+            $builder->where("transactions.service", $service);
+        }
+        if (!empty($userId)) {
+            $builder->where("transactions.user_id", $userId);
+        }
+        if (!empty($providerId)) {
+            $builder->where(function($q) use ($providerId) {
+                $q->where("transactions.payin_provider", $providerId)
+                  ->orWhere("transactions.payout_provider", $providerId);
+            });
+        }
+        if (!empty($searchValue)) {
+            $builder->where(function($q) use ($searchValue) {
+                $q->where("transactions.txnid", "like", "%{$searchValue}%")
+                  ->orWhere("transactions.merchant_txnid", "like", "%{$searchValue}%")
+                  ->orWhere("users.name", "like", "%{$searchValue}%");
+            });
+        }
+
+        $allProviders = \App\Models\Providers::all()->keyBy('id');
+        $allSlabs = \App\Models\Providerslab::all();
+        $gstRate = \App\Models\Settings::getGSTRate();
+
+        $transactions = $builder->orderBy('transactions.id', 'DESC')->get();
+
+        $output = fopen('php://output', 'w');
+        fputcsv($output, [
+            '#',
+            'Txn ID',
+            'Merchant Txn ID',
+            'Date Time',
+            'Service',
+            'Partner Name',
+            'Merchant ID',
+            'Provider',
+            'Amount',
+            'Partner Base Charge',
+            'Partner GST',
+            'Partner Total Charge',
+            'Provider Base Charge',
+            'Provider GST',
+            'Provider Total Charge',
+            'Admin Profit',
+            'Margin %'
+        ]);
+
+        $i = 1;
+        foreach ($transactions as $txn) {
+            $amt = floatval($txn->amount);
+            $pCharge = floatval($txn->charges);
+            $pGst = floatval($txn->gst);
+            $partnerTotal = $pCharge + $pGst;
+
+            $provId = ($txn->service === 'payout') ? $txn->payout_provider : $txn->payin_provider;
+            $providerObj = $allProviders->get($provId);
+            $providerName = $providerObj ? $providerObj->name : 'N/A';
+
+            // Fetch directly from transaction table entry
+            $provBase = floatval($txn->provider_charge ?? 0);
+            $provGst = floatval($txn->provider_gst ?? 0);
+            $providerTotal = $provBase + $provGst;
+
+            if ($providerTotal <= 0 && $amt > 0) {
+                $matchedSlab = $allSlabs->first(function($s) use ($provId, $amt) {
+                    return $s->provider_id == $provId && $amt >= floatval($s->min_amount) && $amt <= floatval($s->max_amount);
+                });
+                if ($matchedSlab) {
+                    $provBase = $matchedSlab->percent ? ($matchedSlab->amount * $amt) / 100 : floatval($matchedSlab->amount);
+                    $provGst = $matchedSlab->gst ? ($provBase * $gstRate) / 100 : 0.0;
+                    $providerTotal = $provBase + $provGst;
+                }
+            }
+
+            $profit = $partnerTotal - $providerTotal;
+            $marginPct = ($amt > 0) ? ($profit / $amt) * 100 : 0.0;
+
+            fputcsv($output, [
+                $i,
+                $txn->txnid,
+                $txn->merchant_txnid,
+                $txn->created_at,
+                strtoupper($txn->service),
+                $txn->user_name,
+                $txn->merchant_id,
+                $providerName,
+                number_format($amt, 2, '.', ''),
+                number_format($pCharge, 2, '.', ''),
+                number_format($pGst, 2, '.', ''),
+                number_format($partnerTotal, 2, '.', ''),
+                number_format($provBase, 2, '.', ''),
+                number_format($provGst, 2, '.', ''),
+                number_format($providerTotal, 2, '.', ''),
+                number_format($profit, 2, '.', ''),
+                number_format($marginPct, 2, '.', '') . '%'
+            ]);
+            $i++;
+        }
+
+        fclose($output);
+        exit;
     }
 }
