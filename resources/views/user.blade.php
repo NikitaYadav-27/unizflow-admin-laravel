@@ -177,7 +177,7 @@
                                 
                                 <div class="col-lg-4">
                                   <div class="form-group mb-2">
-                                    <label class="mb-1">Payout Per Transaction Limit <span class="text-primary">*</span></label>
+                                    <label class="mb-1">Payout Per Txn Limit <span class="text-primary">*</span></label>
                                     <input class="form-control"  value="<?= $user['payout_per_limit']?>" name="payout_per_limit" type="number" placeholder="Enter Per Transaction Limit">
                                   </div>
                                 </div>
@@ -277,6 +277,7 @@
                                     <label class="mb-1">Action <span class="text-primary">*</span></label>
                                     <select class="form-control" data-placeholder="Select Action" name="action" required>
                                         <option></option>
+                                        <option value="CREDIT">Credit Funds</option>
                                         <option value="DEBIT">Debit Funds</option>
                                         <option value="HOLD">Hold Funds</option>
                                     </select>

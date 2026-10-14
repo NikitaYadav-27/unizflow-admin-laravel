@@ -60,7 +60,7 @@
                     <div>
                         <span class="text-muted fs-12 fw-semibold text-uppercase">Provider Charges</span>
                         <h4 class="fw-bold mt-1 mb-0 text-warning" id="summaryProvider">₹ 0.00</h4>
-                        <small class="text-muted fs-11">Cost Paid to Gateways</small>
+                        <small class="text-muted fs-11">Cost Paid to Providers</small>
                     </div>
                     <span class="avatar avatar-md rounded-circle bg-warning-transparent text-warning">
                         <i class="ti ti-arrow-up-right fs-20"></i>

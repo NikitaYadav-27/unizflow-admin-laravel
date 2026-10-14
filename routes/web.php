@@ -90,6 +90,8 @@ Route::post('/api/admin/settlement-package/delete', [Home::class, 'delete_settle
 Route::get('/api/tables/settlements', [Tables::class, 'settlements']);
 Route::post('/api/admin/settlement/settle-to-wallet', [Home::class, 'settle_to_wallet']);
 Route::post('/api/admin/settlements/trigger-auto', [Home::class, 'trigger_auto_settlements']);
+Route::post('/api/admin/settlement/preview-manual', [Home::class, 'preview_manual_settlement']);
+Route::post('/api/admin/settlement/create-manual', [Home::class, 'create_manual_settlement']);
 
 Route::get('/admin/settlements-batch/{id}', [Home::class, 'settlements_batch']);
 Route::get('/api/tables/payin_transactions', [Tables::class, 'payin_transactions']);

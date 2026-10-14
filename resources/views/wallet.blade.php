@@ -237,7 +237,7 @@
                         <th scope="col">Type</th>
                         <th scope="col">TxnType</th>
                         <th scope="col">Txnid</th>
-                        <th scope="col">Openeing</th>
+                        <th scope="col">Opening</th>
                         <th scope="col">Amount</th>
                         <th scope="col">Remarks</th>
                         <th scope="col">Closing</th>

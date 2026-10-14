@@ -219,9 +219,9 @@ class Home extends BaseController
        $admin = $admin->find($session->get('admin_id'));
        
        $input = json_decode(request()->getContent());
-       $amount = $input->amount;
-       $remarks = $input->remarks;
-       $userId = $input->user_id;
+       $amount = $input->amount ?? 0;
+       $remarks = $input->remarks ?? '';
+       $userId = $input->user_id ?? 0;
        
        if(!Validators::amount($amount)) {
           return response()->json(["status" => "error","message" => "Invalid Amount"], 400);
@@ -242,15 +242,48 @@ class Home extends BaseController
           return response()->json(["status" => "error","message" => "Invalid User"], 400);
        }
        
-       //add credit
-       $creditModel = new \App\Models\Credits();
-       $creditModel->create([
-           "user_id" => $userId,
-           "amount" => $amount,
-           "credit_remarks" => $remarks,
-           "txnid" => $this->generateTxnId()
-       ]);
-       return response()->json(["status" => "error","message" => "Credits Added Successfully !"], 200);
+       \Illuminate\Support\Facades\DB::beginTransaction();
+       try {
+           $user = $userModel->lockForUpdate()->find($userId);
+           $txnid = $this->generateTxnId();
+           $opening = floatval($user['wallet'] ?? 0);
+           $creditAmount = floatval($amount);
+           $closing = number_format($opening + $creditAmount, 2, '.', '');
+
+           $userModel->where('id', $userId)->update(['wallet' => $closing]);
+
+           $creditModel = new \App\Models\Credits();
+           $creditModel->create([
+               "user_id" => $userId,
+               "amount" => $amount,
+               "credit_remarks" => $remarks,
+               "credited" => 1,
+               "credited_at" => date('Y-m-d H:i:s'),
+               "txnid" => $txnid
+           ]);
+
+           $walletModel = new \App\Models\Wallet();
+           $walletModel->create([
+               "user_id" => $userId,
+               "type" => "CREDIT",
+               "txn_type" => "ADVANCE-CREDIT",
+               "txnid" => $txnid,
+               "opening" => number_format($opening, 2, '.', ''),
+               "amount" => number_format($creditAmount, 2, '.', ''),
+               "charges" => "0",
+               "gst" => "0",
+               "net_amount" => number_format($creditAmount, 2, '.', ''),
+               "remarks" => $remarks,
+               "processed" => 1,
+               "closing" => $closing
+           ]);
+
+           \Illuminate\Support\Facades\DB::commit();
+           return response()->json(["status" => "success","message" => "Credits Added Successfully !"], 200);
+       } catch (\Exception $e) {
+           \Illuminate\Support\Facades\DB::rollBack();
+           return response()->json(["status" => "error","message" => "Failed to add credits: " . $e->getMessage()], 500);
+       }
     }
     
     public function debit_credits() {
@@ -268,12 +301,65 @@ class Home extends BaseController
           return response()->json(["status" => "error","message" => "Invalid Remarks"], 400);
        }
        
-       $creditModel = new \App\Models\Credits();
-       $creditModel->where('id', $id)->update([
-          "debit_granted" => 1,
-          "debit_remarks" => $remarks
-       ]);
-       return response()->json(["status" => "error","message" => "Credits Debited Successfully !"], 200);
+       \Illuminate\Support\Facades\DB::beginTransaction();
+       try {
+           $creditModel = new \App\Models\Credits();
+           $credit = $creditModel->find($id);
+           if (!$credit || $credit['debited'] == 1) {
+               \Illuminate\Support\Facades\DB::rollBack();
+               return response()->json(["status" => "error", "message" => "Credit record not found or already debited"], 400);
+           }
+
+           $userModel = new \App\Models\User();
+           $user = $userModel->lockForUpdate()->find($credit['user_id']);
+           if (!$user) {
+               \Illuminate\Support\Facades\DB::rollBack();
+               return response()->json(["status" => "error", "message" => "User not found"], 404);
+           }
+
+           $opening = floatval($user['wallet'] ?? 0);
+           $debitAmount = floatval($credit['amount']);
+           if ($opening < $debitAmount) {
+               \Illuminate\Support\Facades\DB::rollBack();
+               return response()->json(["status" => "error", "message" => "Insufficient wallet balance to debit this credit."], 400);
+           }
+
+           $closing = number_format($opening - $debitAmount, 2, '.', '');
+
+           // Deduct from user active wallet
+           $userModel->where('id', $user['id'])->update(['wallet' => $closing]);
+
+           // Add ledger entry in wallet_transactions
+           $walletModel = new \App\Models\Wallet();
+           $walletModel->create([
+               "user_id" => $user['id'],
+               "type" => "DEBIT",
+               "txn_type" => "ADVANCE-DEBIT",
+               "txnid" => $credit['txnid'],
+               "opening" => number_format($opening, 2, '.', ''),
+               "amount" => number_format($debitAmount, 2, '.', ''),
+               "charges" => "0",
+               "gst" => "0",
+               "net_amount" => number_format($debitAmount, 2, '.', ''),
+               "remarks" => $remarks,
+               "processed" => 1,
+               "closing" => $closing
+           ]);
+
+           // Update credit record
+           $creditModel->where('id', $id)->update([
+              "debited" => 1,
+              "debit_granted" => 1,
+              "debited_at" => date('Y-m-d H:i:s'),
+              "debit_remarks" => $remarks
+           ]);
+
+           \Illuminate\Support\Facades\DB::commit();
+           return response()->json(["status" => "success","message" => "Credits Debited Successfully !"], 200);
+       } catch (\Exception $e) {
+           \Illuminate\Support\Facades\DB::rollBack();
+           return response()->json(["status" => "error","message" => "Failed to debit credits: " . $e->getMessage()], 500);
+       }
     }
     
     private function generateTxnId() {
@@ -317,6 +403,7 @@ class Home extends BaseController
             $admin = $admin->find($session->get('admin_id'));
             $data['admin'] = $admin;
             $data['status'] = $status;
+            $data['users'] = (new \App\Models\User())->select(['id', 'name', 'merchant_id'])->where('active', 1)->orderBy('name', 'ASC')->get();
             return view('settlements', $data);
         }
     }
@@ -873,8 +960,8 @@ class Home extends BaseController
         if (!$session->get('admin_id')) {
             return response()->json(["status" => "error", "message" => "Invalid Session"], 401);
         }
-       $admin = new \App\Models\Admin();
-       $admin = $admin->find($session->get('admin_id'));
+        $admin = new \App\Models\Admin();
+        $admin = $admin->find($session->get('admin_id'));
        
         $encId = request()->input('id');
         $id = $this->decrypt($encId);
@@ -883,12 +970,54 @@ class Home extends BaseController
         }
         
         $settlementModel = new \App\Models\Settlement();
-        if($settlementModel->find($id)['status'] != "Pending" && $settlementModel->find($id)['status'] != "Hold") {
-             return response()->json(["status" => "error", "message" => "Settlement is not in Pending Stage."], 400);
+        $settlement = $settlementModel->find($id);
+        if(!$settlement || (!in_array($settlement['status'], ["Pending", "Hold"]) && $settlement['credited'] == 1)) {
+             return response()->json(["status" => "error", "message" => "Settlement is not in Pending or Hold Stage."], 400);
         }
         
-        $settlementModel->where('id', $id)->update(["status" => "Success", "settle_to" => "wallet"]);
-        return response()->json(["status" => "success", "message" => "Amount Settled to User's Wallet !"], 200);
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $userModel = new \App\Models\User();
+            $user = $userModel->lockForUpdate()->find($settlement['user_id']);
+            if (!$user) {
+                \Illuminate\Support\Facades\DB::rollBack();
+                return response()->json(["status" => "error", "message" => "User not found"], 404);
+            }
+
+            $opening = floatval($user['wallet'] ?? 0);
+            $netAmount = floatval($settlement['net_amount']);
+            $closing = number_format($opening + $netAmount, 2, '.', '');
+
+            $userModel->where('id', $user['id'])->update(['wallet' => $closing]);
+
+            $walletModel = new \App\Models\Wallet();
+            $walletModel->create([
+                'user_id' => $user['id'],
+                'type' => 'CREDIT',
+                'txn_type' => 'SETTLEMENT',
+                'txnid' => $settlement['txnid'],
+                'opening' => number_format($opening, 2, '.', ''),
+                'amount' => number_format(floatval($settlement['amount']), 2, '.', ''),
+                'charges' => number_format(floatval($settlement['charges']), 2, '.', ''),
+                'gst' => number_format(floatval($settlement['gst']), 2, '.', ''),
+                'net_amount' => number_format($netAmount, 2, '.', ''),
+                'remarks' => 'Settlement credited to wallet (Batch: ' . $settlement['batch_id'] . ')',
+                'processed' => 1,
+                'closing' => $closing
+            ]);
+
+            $settlementModel->where('id', $id)->update([
+                "status" => "Success",
+                "settle_to" => "wallet",
+                "credited" => 1
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+            return response()->json(["status" => "success", "message" => "Amount Settled to User's Wallet !"], 200);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json(["status" => "error", "message" => "Failed to settle: " . $e->getMessage()], 500);
+        }
     }
 
     public function trigger_auto_settlements()
@@ -907,6 +1036,137 @@ class Home extends BaseController
             "status" => "success",
             "message" => "Processed automatic settlements: {$result['settlements_created']} batch(es) created, ₹" . number_format($result['total_amount_settled'], 2) . " settled ({$result['eligible_auto_users_count']} auto users evaluated, {$result['skipped_manual_users_count']} manual users skipped).",
             "data" => $result
+        ], 200);
+    }
+
+    public function preview_manual_settlement()
+    {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return response()->json(["status" => "error", "message" => "Invalid Session"], 401);
+        }
+
+        $raw = json_decode(request()->getContent(), true) ?? [];
+        $userId = request()->input('user_id', $raw['user_id'] ?? null);
+        $fromTime = request()->input('from_time', $raw['from_time'] ?? null);
+        $toTime = request()->input('to_time', $raw['to_time'] ?? null);
+
+        if (!($userId > 0)) {
+            return response()->json(["status" => "error", "message" => "Please select a valid merchant"], 400);
+        }
+
+        if (empty($fromTime) || empty($toTime)) {
+            return response()->json(["status" => "error", "message" => "Please select both From and To date & time"], 400);
+        }
+
+        $startDate = date('Y-m-d H:i:s', strtotime($fromTime));
+        $endDate = date('Y-m-d H:i:s', strtotime($toTime));
+
+        if ($startDate > $endDate) {
+            return response()->json(["status" => "error", "message" => "From date & time cannot be after To date & time"], 400);
+        }
+
+        $user = \App\Models\User::find($userId);
+        if (!$user) {
+            return response()->json(["status" => "error", "message" => "Merchant not found"], 404);
+        }
+
+        $transactionModel = new \App\Models\Transaction();
+        $query = $transactionModel
+            ->selectRaw('count(id) as total_count, sum(amount) as total_amount, sum(charges) as total_charges, sum(gst) as total_gst')
+            ->where('service', 'payin')
+            ->where('status', 'Success')
+            ->where('settled', 0)
+            ->where('user_id', $userId)
+            ->where(function ($q) use ($startDate, $endDate) {
+                $q->where(function ($q1) use ($startDate, $endDate) {
+                    $q1->whereNotNull('txn_complete_time')
+                       ->where('txn_complete_time', '>=', $startDate)
+                       ->where('txn_complete_time', '<=', $endDate);
+                })->orWhere(function ($q2) use ($startDate, $endDate) {
+                    $q2->whereNull('txn_complete_time')
+                       ->where('created_at', '>=', $startDate)
+                       ->where('created_at', '<=', $endDate);
+                });
+            });
+
+        $result = $query->first();
+        $count = (int)($result['total_count'] ?? 0);
+        $totalAmount = round((float)($result['total_amount'] ?? 0), 2);
+        $totalCharges = round((float)($result['total_charges'] ?? 0), 2);
+        $totalGst = round((float)($result['total_gst'] ?? 0), 2);
+        $netAmount = round($totalAmount - $totalCharges - $totalGst, 2);
+
+        return response()->json([
+            "status" => "success",
+            "data" => [
+                "user_name" => $user->name,
+                "merchant_id" => $user->merchant_id,
+                "count" => $count,
+                "total_amount" => $totalAmount,
+                "total_charges" => $totalCharges,
+                "total_gst" => $totalGst,
+                "net_amount" => $netAmount,
+                "from_time" => $startDate,
+                "to_time" => $endDate
+            ]
+        ], 200);
+    }
+
+    public function create_manual_settlement()
+    {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return response()->json(["status" => "error", "message" => "Invalid Session"], 401);
+        }
+
+        $raw = json_decode(request()->getContent(), true) ?? [];
+        $userId = request()->input('user_id', $raw['user_id'] ?? null);
+        $fromTime = request()->input('from_time', $raw['from_time'] ?? null);
+        $toTime = request()->input('to_time', $raw['to_time'] ?? null);
+
+        if (!($userId > 0)) {
+            return response()->json(["status" => "error", "message" => "Please select a valid merchant"], 400);
+        }
+
+        if (empty($fromTime) || empty($toTime)) {
+            return response()->json(["status" => "error", "message" => "Please select both From and To date & time"], 400);
+        }
+
+        $startDate = date('Y-m-d H:i:s', strtotime($fromTime));
+        $endDate = date('Y-m-d H:i:s', strtotime($toTime));
+
+        if ($startDate > $endDate) {
+            return response()->json(["status" => "error", "message" => "From date & time cannot be after To date & time"], 400);
+        }
+
+        $user = \App\Models\User::find($userId);
+        if (!$user) {
+            return response()->json(["status" => "error", "message" => "Merchant not found"], 404);
+        }
+
+        $settlement = \App\Libraries\AutoSettlement::process_settlement($startDate, $endDate, $userId);
+
+        if (!$settlement) {
+            return response()->json([
+                "status" => "error",
+                "message" => "No unsettled payin transactions found for {$user->name} between {$startDate} and {$endDate}."
+            ], 400);
+        }
+
+        return response()->json([
+            "status" => "success",
+            "message" => "Settlement Batch created successfully! Batch ID: {$settlement->batch_id}, Net Amount: ₹" . number_format($settlement->net_amount, 2),
+            "data" => [
+                "settlement_id" => $settlement->id,
+                "batch_id" => $settlement->batch_id,
+                "txnid" => $settlement->txnid,
+                "amount" => $settlement->amount,
+                "charges" => $settlement->charges,
+                "gst" => $settlement->gst,
+                "net_amount" => $settlement->net_amount,
+                "status" => $settlement->status
+            ]
         ], 200);
     }
     
@@ -1286,10 +1546,10 @@ class Home extends BaseController
        
        $input = json_decode(request()->getContent());
        
-       if(!in_array($input->action, ["DEBIT","HOLD"])){
+       if(!in_array($input->action, ["CREDIT", "DEBIT", "HOLD"])){
           return response()->json([
                "status" => "error",
-               "message" => "Please select valid action"
+               "message" => "Please select valid action (CREDIT, DEBIT, or HOLD)"
           ], 400); 
        }
 
@@ -1307,45 +1567,115 @@ class Home extends BaseController
            ], 400);
        }
        
-       $user = $userModel->find($input->user_id);
-       if($user['wallet'] < $input->amount){
-           return response()->json([
-               "status" => "error",
-               "message" => "Insufficient wallet balance to complete this transaction."
-           ], 400);
+       \Illuminate\Support\Facades\DB::beginTransaction();
+       try {
+           $user = $userModel->lockForUpdate()->find($input->user_id);
+           if (!$user) {
+               \Illuminate\Support\Facades\DB::rollBack();
+               return response()->json(["status" => "error", "message" => "User not found"], 404);
+           }
+
+           $opening = floatval($user['wallet'] ?? 0);
+           $amount = floatval($input->amount);
+           $txnid = $this->generateTxnId();
+
+           if ($input->action == "CREDIT") {
+               $closing = number_format($opening + $amount, 2, '.', '');
+               $userModel->where('id', $user['id'])->update(['wallet' => $closing]);
+
+               $walletModel->create([
+                   "user_id" => $user['id'],
+                   "type" => "CREDIT",
+                   "txn_type" => "CREDIT",
+                   "txnid" => $txnid,
+                   "amount" => number_format($amount, 2, '.', ''),
+                   "charges" => "0",
+                   "gst" => "0",
+                   "net_amount" => number_format($amount, 2, '.', ''),
+                   "processed" => 1,
+                   "remarks" => $input->remarks,
+                   "opening" => number_format($opening, 2, '.', ''),
+                   "closing" => $closing
+               ]);
+           }
+
+           if ($input->action == "DEBIT") {
+               if ($opening < $amount) {
+                   \Illuminate\Support\Facades\DB::rollBack();
+                   return response()->json([
+                       "status" => "error",
+                       "message" => "Insufficient wallet balance to complete this transaction."
+                   ], 400);
+               }
+               $closing = number_format($opening - $amount, 2, '.', '');
+               $userModel->where('id', $user['id'])->update(['wallet' => $closing]);
+
+               $walletModel->create([
+                   "user_id" => $user['id'],
+                   "type" => "DEBIT",
+                   "txn_type" => "DEBIT",
+                   "txnid" => $txnid,
+                   "amount" => number_format($amount, 2, '.', ''),
+                   "charges" => "0",
+                   "gst" => "0",
+                   "net_amount" => number_format($amount, 2, '.', ''),
+                   "processed" => 1,
+                   "remarks" => $input->remarks,
+                   "opening" => number_format($opening, 2, '.', ''),
+                   "closing" => $closing
+               ]);
+           }
+
+           if ($input->action == "HOLD") {
+               if ($opening < $amount) {
+                   \Illuminate\Support\Facades\DB::rollBack();
+                   return response()->json([
+                       "status" => "error",
+                       "message" => "Insufficient wallet balance to place on hold."
+                   ], 400);
+               }
+               $closing = number_format($opening - $amount, 2, '.', '');
+               $holdOpening = floatval($user['hold_wallet'] ?? 0);
+               $holdClosing = number_format($holdOpening + $amount, 2, '.', '');
+
+               $userModel->where('id', $user['id'])->update([
+                   'wallet' => $closing,
+                   'hold_wallet' => $holdClosing
+               ]);
+
+               $holdWalletModel->create([
+                   "user_id" => $user['id'],
+                   "type" => "hold",
+                   "txnid" => $txnid,
+                   "amount" => number_format($amount, 2, '.', ''),
+                   "processed" => 1,
+                   "reason" => $input->remarks,
+                   "opening" => number_format($holdOpening, 2, '.', ''),
+                   "closing" => $holdClosing
+               ]);
+
+               $walletModel->create([
+                   "user_id" => $user['id'],
+                   "type" => "DEBIT",
+                   "txn_type" => "HOLD",
+                   "txnid" => $txnid,
+                   "amount" => number_format($amount, 2, '.', ''),
+                   "charges" => "0",
+                   "gst" => "0",
+                   "net_amount" => number_format($amount, 2, '.', ''),
+                   "processed" => 1,
+                   "remarks" => $input->remarks,
+                   "opening" => number_format($opening, 2, '.', ''),
+                   "closing" => $closing
+               ]);
+           }
+
+           \Illuminate\Support\Facades\DB::commit();
+           return response()->json(["status" => "success", "message" => "Transaction Completed Successfully"], 200);
+       } catch (\Exception $e) {
+           \Illuminate\Support\Facades\DB::rollBack();
+           return response()->json(["status" => "error", "message" => "Transaction Failed: " . $e->getMessage()], 500);
        }
-       
-       if($input->action == "DEBIT") {
-           $walletModel->create([
-              "user_id" => $input->user_id,
-              "type" => "DEBIT",
-              "txn_type" => "DEBIT",
-              "txnid" => $this->generateTxnId(),
-              "amount" => $input->amount,
-              "charges" => "0",
-              "gst" => "0",
-              "net_amount" => $input->amount,
-              "processed" => 2,
-              "remarks" => $input->remarks,
-              "opening" => "",
-              "closing" => ""
-           ]);
-       }
-       
-       if($input->action == "HOLD") {
-           $holdWalletModel->create([
-              "user_id" => $input->user_id,
-              "type" => "hold",
-              "txnid" => $this->generateTxnId(),
-              "amount" => $input->amount,
-              "processed" => 0,
-              "reason" => $input->remarks,
-              "opening" => "",
-              "closing" => ""
-           ]);
-       }
-    
-      return response()->json(["status" => "success", "message" => "Transaction Submitted Successfully"], 200);   
     }
     
     public function providers($type) {
