@@ -1447,6 +1447,12 @@ class Home extends BaseController
        $admin = $admin->find($session->get('admin_id'));
        $data['admin'] = $admin;
        $data['user'] = $userModel->find($user_id);
+       $data['unsettled_amount'] = (new \App\Models\Transaction())
+           ->where('user_id', $user_id)
+           ->where('service', 'payin')
+           ->where('status', 'Success')
+           ->where('settled', 0)
+           ->sum('net_amount');
        return view("user",$data);
     }
     

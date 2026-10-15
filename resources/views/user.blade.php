@@ -52,7 +52,12 @@
                                     </p>
                                     <p class="mb-0 fs-11 op-5 text-fixed-white"><i class="ri-wallet-2-line"></i> Wallet Balance</p>
                                 </div>
-
+                                <div class="me-4">
+                                    <p class="fw-bold fs-20 text-warning text-shadow mb-0">₹
+                                        <?= number_format($unsettled_amount ?? 0, 2) ?>
+                                    </p>
+                                    <p class="mb-0 fs-11 op-5 text-fixed-white"><i class="ri-time-line"></i> Unsettled Collections</p>
+                                </div>
                             </div>
                         </div>
                     </div>

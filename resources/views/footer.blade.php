@@ -47,10 +47,6 @@
     60%{background-position:0%  50%, 50% 100%,100%   0%}
     80%{background-position:0%  50%, 50%  50%,100% 100%}
 }
-    
-
- */
-
 </style>
     
     <!-- Scroll To Top -->
@@ -65,7 +61,7 @@
     <?php echo view('includes/js', get_defined_vars()); ?>
     
 
-<script src="/assets/js/defaultmenu.min.js?v=2562"></script>   
+<script src="/assets/js/defaultmenu.min.js?v=2564"></script>   
     
    
 

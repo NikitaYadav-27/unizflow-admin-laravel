@@ -85,7 +85,7 @@ class Auth extends BaseController
 
             //add login Attempt 
             $loginAttempt = new \App\Models\LoginAttempt();
-            $loginAttempt->create([
+            $createdAttempt = $loginAttempt->create([
                 "ip" => request()->ip(),
                 "browser" => $browser,
                 "device" => $device,
@@ -97,7 +97,7 @@ class Auth extends BaseController
                 "verified" => 0
             ]);
 
-            $loginAttemptId = $loginAttempt->getConnection()->getPdo()->lastInsertId();
+            $loginAttemptId = $createdAttempt->id;
         }
 
         if (!$adminData || !password_verify($password, $adminData['password'])) {

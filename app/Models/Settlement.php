@@ -11,7 +11,7 @@ class Settlement extends Model {
     
     
     protected $fillable = [
-       'user_id', 'batch_id', 'amount', 'charges', 'gst', 'net_amount', 'settle_to', 'txnid','reference','bank_id','remarks','credited', 'status', 'created_at', 'updated_at'
+       'user_id', 'batch_id', 'amount', 'charges', 'gst', 'net_amount', 'settle_to', 'txnid', 'reference', 'bank_id', 'remarks', 'credited', 'status', 'from_time', 'to_time', 'created_at', 'updated_at'
     ];
     
     public function getRecent($user_id, $limit) {

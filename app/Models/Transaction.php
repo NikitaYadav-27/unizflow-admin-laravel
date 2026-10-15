@@ -55,19 +55,17 @@ class Transaction extends Model
         $startTime = date("Y-m-d 00:00:00");
         $endTime = date("Y-m-d 23:59:59");
     
-        $builder = $this->query();
-    
-        $builder->select([
-            'SUM(CASE WHEN service = "payin" THEN amount ELSE 0 END) AS collection',
-            'SUM(CASE WHEN service = "payout" THEN amount ELSE 0 END) AS payout',
-            'SUM(charges + gst) AS total_charges'
-        ])
+
+        $result = $this->selectRaw('
+            SUM(CASE WHEN service = "payin" THEN amount ELSE 0 END) AS collection,
+            SUM(CASE WHEN service = "payout" THEN amount ELSE 0 END) AS payout,
+            SUM(charges + gst) AS total_charges
+        ')
         ->where('user_id', $user_id)
         ->where('status', 'Success')
         ->where('txn_complete_time', '>=', $startTime)
-        ->where('txn_complete_time', '<=', $endTime);
-    
-        $result = $builder->get()->first();
+        ->where('txn_complete_time', '<=', $endTime)
+        ->first();
     
         return [
             'collection' => (float) ($result['collection'] ?? 0),
@@ -77,19 +75,16 @@ class Transaction extends Model
     }
     
     public function getStatusData($user_id) {
-        $builder = $this->query();
-    
-        $builder->select([
-            'COUNT(*) AS total_transactions',
-            'SUM(CASE WHEN status = "Success" THEN 1 ELSE 0 END) AS success_transactions',
-            'SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS pending_transactions',
-            'SUM(CASE WHEN status = "Failed" THEN 1 ELSE 0 END) AS failed_transactions',
-            'SUM(CASE WHEN status = "Processing" THEN 1 ELSE 0 END) AS processing_transactions',
-            'SUM(CASE WHEN status = "Expired" THEN 1 ELSE 0 END) AS expired_transactions'
-        ])
-        ->where('user_id', $user_id);
-    
-        $result = $builder->get()->first();
+        $result = $this->selectRaw('
+            COUNT(*) AS total_transactions,
+            SUM(CASE WHEN status = "Success" THEN 1 ELSE 0 END) AS success_transactions,
+            SUM(CASE WHEN status = "Pending" THEN 1 ELSE 0 END) AS pending_transactions,
+            SUM(CASE WHEN status = "Failed" THEN 1 ELSE 0 END) AS failed_transactions,
+            SUM(CASE WHEN status = "Processing" THEN 1 ELSE 0 END) AS processing_transactions,
+            SUM(CASE WHEN status = "Expired" THEN 1 ELSE 0 END) AS expired_transactions
+        ')
+        ->where('user_id', $user_id)
+        ->first();
     
         return [
             'total_transactions'    => (int) ($result['total_transactions'] ?? 0),
@@ -111,18 +106,17 @@ class Transaction extends Model
     
     public function getWeeklySummary($user_id) {
         // Get raw data from DB
-        $data = $this->query()
-            ->select([
-                'DATE(created_at) as date',
-                'SUM(CASE WHEN service = "payin" THEN amount ELSE 0 END) AS payin',
-                'SUM(CASE WHEN service = "payout" THEN amount ELSE 0 END) AS payout'
-            ])
+        $data = $this->selectRaw('
+                DATE(created_at) as date,
+                SUM(CASE WHEN service = "payin" THEN amount ELSE 0 END) AS payin,
+                SUM(CASE WHEN service = "payout" THEN amount ELSE 0 END) AS payout
+            ')
             ->where('user_id', $user_id)
             ->where('status', 'Success')
             ->where('created_at', '>=', date('Y-m-d 00:00:00', strtotime('-6 days')))
-            ->groupBy('DATE(created_at)')
+            ->groupByRaw('DATE(created_at)')
             ->get()
-            ->map(function($i){return (array)$i;})->toArray();
+            ->toArray();
     
         // Map results by date for fast lookup
         $map = array_column($data, null, 'date');
@@ -158,19 +152,22 @@ class Transaction extends Model
         ->get()
         ->first();
         
-        $settlements = (\Illuminate\Support\Facades\DB::connection())->table("settlements")
+        $settlements = DB::table("settlements")
          ->selectRaw("count(*) as total_transactions, sum(net_amount) as total_amount")
          ->where("status", "Success")
          ->where("updated_at", ">=", $startDate)
          ->where("updated_at", "<=", $endDate)
-         ->get()->map(function ($item) { return (array) $item; })->first();
+         ->first();
          
-        $topups = (\Illuminate\Support\Facades\DB::connection())->table("fund_requests")
+        $topups = DB::table("fund_requests")
          ->selectRaw("count(*) as total_transactions, sum(amount) as total_amount")
          ->where("status", "Success")
          ->where("updated_at", ">=", $startDate)
          ->where("updated_at", "<=", $endDate)
-         ->get()->map(function ($item) { return (array) $item; })->first();
+         ->first();
+         
+        $settlements = (array) $settlements;
+        $topups = (array) $topups;
          
       
         

@@ -3,7 +3,7 @@
     echo view('header', get_defined_vars());
 }
 $wallets = (new \App\Models\User())->selectRaw("sum(wallet) as wallet, sum(hold_wallet) as hold_wallet")->first();
-
+$unsettledTotal = (new \App\Models\Transaction())->where('service', 'payin')->where('status', 'Success')->where('settled', 0)->sum('net_amount');
 ?>
 
 
@@ -20,8 +20,9 @@ $wallets = (new \App\Models\User())->selectRaw("sum(wallet) as wallet, sum(hold_
 
     </div>
     <div class="btn-list mt-md-0 mt-2 d-flex align-items-center gap-2 flex-wrap">
-        <button class="btn btn-primary text-nowrap" style="padding: .375rem .75rem !important;"><i class="ti ti-wallet"></i>&nbsp;₹ <?= round($wallets['wallet'],2) ?></button>
-        <button class="btn btn-purple text-nowrap" style="padding: .375rem .75rem !important;"><i class="ti ti-alert-circle"></i>&nbsp;₹ <?= round($wallets['hold_wallet'],2) ?></button>
+        <button class="btn btn-primary text-nowrap" style="padding: .375rem .75rem !important;" title="Total Usable Wallets"><i class="ti ti-wallet"></i>&nbsp;₹ <?= round($wallets['wallet'],2) ?></button>
+        <button class="btn btn-purple text-nowrap" style="padding: .375rem .75rem !important;" title="Total Funds on Hold"><i class="ti ti-alert-circle"></i>&nbsp;₹ <?= round($wallets['hold_wallet'],2) ?></button>
+        <button class="btn btn-warning text-nowrap" style="padding: .375rem .75rem !important;" title="Total Unsettled Payin Collections"><i class="ti ti-clock"></i>&nbsp;Unsettled: ₹ <?= number_format($unsettledTotal, 2) ?></button>
          <div id="reportrange" class="form-control sm-w-100" style="width: min-content; white-space: nowrap;">
            <i class="ti ti-calendar"></i>&nbsp;
            <span></span> <i class="fa fa-caret-down"></i>

@@ -70,7 +70,8 @@ class Tables extends BaseController
             users.*, 
             settlement_packages.name as settlement_package,
             packages.name AS package,
-            COALESCE(tx.todays_collection, 0) AS todays_collection
+            COALESCE(tx.todays_collection, 0) AS todays_collection,
+            COALESCE(unsettled_tx.unsettled_amount, 0) AS unsettled_amount
         ");
         $builder->leftJoin("packages", "packages.id", "=", "users.package");
         $builder->join("settlement_packages", "settlement_packages.id", "=", "users.settlement_package");
@@ -82,6 +83,14 @@ class Tables extends BaseController
                   AND txn_complete_time BETWEEN '$startTime' AND '$endTime'
                 GROUP BY user_id
              ) AS tx"), "tx.user_id", "=", "users.id");
+
+        $builder->leftJoin(\Illuminate\Support\Facades\DB::raw("( SELECT user_id, SUM(net_amount) AS unsettled_amount 
+                FROM transactions 
+                WHERE status = 'Success' 
+                  AND service = 'payin' 
+                  AND settled = 0
+                GROUP BY user_id
+             ) AS unsettled_tx"), "unsettled_tx.user_id", "=", "users.id");
 
         if($status == "active"){
             $builder->where('users.active', 1);
@@ -122,7 +131,7 @@ class Tables extends BaseController
                 $user->name,
                 $user->phone,
                 $user->email,
-                "<i class='ti ti-wallet'></i>&nbsp;&nbsp;₹ " . $user->wallet,
+                "<i class='ti ti-wallet'></i>&nbsp;&nbsp;₹ " . $user->wallet . "<br><span class='badge bg-warning-transparent' title='Unsettled Payin Collections'>Unsettled: ₹ " . number_format($user->unsettled_amount, 2) . "</span>",
                 $user->package,
 
                 '<div class="custom-toggle-switch toggle-sm ms-2">
@@ -819,10 +828,6 @@ class Tables extends BaseController
         // Set CSV filename
         $filename = 'export_' . date('Ymd_His') . '.csv';
 
-        // Set headers for file download
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
-
         $availableSearchKeys = [
             "txnid",
             "merchant_txnid",
@@ -900,17 +905,12 @@ class Tables extends BaseController
                 } elseif ($searchBy == "settlement_txnid") {
                     $builder->where('settlements.txnid', 'like', '%' . $searchValue . '%');
                 } else {
-                    $builder->like('transactions.' . $searchBy, $searchValue);
+                    $builder->where('transactions.' . $searchBy, 'like', '%' . $searchValue . '%');
                 }
             }
         }
 
         $builder->orderBy('transactions.id', "DESC");
-
-        $query = $builder->get();
-        $transactions = $query;
-
-        $index = 1;
 
         $columns = ["SR", "USER", "SERVICE", "TXNID"];
         if (in_array($type, ['payin', 'payout', 'all'])) {
@@ -959,70 +959,76 @@ class Tables extends BaseController
         $columns[] = "UPDATED AT";
         $columns[] = "CREATED AT";
 
-        echo implode(",", $columns);
-        echo "\n";
+        return response()->streamDownload(function() use ($builder, $type, $columns) {
+            $output = fopen('php://output', 'w');
+            fputs($output, "\xEF\xBB\xBF");
+            fputcsv($output, $columns);
+            $index = 1;
 
-        foreach ($transactions as $transaction) {
-            $row = [];
-            $row[] = $index;
-            $row[] = $transaction->user;
-            $row[] = $transaction->service == "payout" ? "PAYOUT" : ($transaction->service == "payin" && $transaction->qr_id == 0 ? "PAYIN" : ($transaction->service == "payin" && $transaction->qr_id != 0 ? "QR" : "OTHER"));
-            $row[] = $transaction->txnid;
+            foreach ($builder->cursor() as $transaction) {
+                $row = [];
+                $row[] = $index++;
+                $row[] = $transaction->user;
+                $row[] = $transaction->service == "payout" ? "PAYOUT" : ($transaction->service == "payin" && $transaction->qr_id == 0 ? "PAYIN" : ($transaction->service == "payin" && $transaction->qr_id != 0 ? "QR" : "OTHER"));
+                $row[] = $transaction->txnid;
 
-            if (in_array($type, ['payin', 'payout', 'all'])) {
-                $row[] = $transaction->merchant_txnid;
+                if (in_array($type, ['payin', 'payout', 'all'])) {
+                    $row[] = $transaction->merchant_txnid;
+                }
+                $row[] = $transaction->reference_id;
+                $row[] = $transaction->rrn;
+                $row[] = $transaction->status;
+                $row[] = $transaction->name;
+                if (in_array($type, ['payin', 'all'])) {
+                    $row[] = $transaction->email;
+                }
+                $row[] = $transaction->phone;
+                $row[] = $transaction->amount;
+                $row[] = $transaction->charges;
+                $row[] = $transaction->gst;
+                $row[] = $transaction->net_amount;
+                if (in_array($type, ['payin', 'qr', 'all'])) {
+                    $row[] = $transaction->payee_name;
+                    $row[] = $transaction->payee_vpa;
+                    $row[] = $transaction->payee_phone;
+                }
+
+                if (in_array($type, ['payout', 'all'])) {
+                    $row[] = $transaction->account_number;
+                    $row[] = $transaction->ifsc_code;
+                    $row[] = $transaction->bank_name;
+                }
+
+                $row[] = $transaction->order_id;
+                $row[] = $transaction->source;
+
+                if (in_array($type, ['payout', 'all'])) {
+                    $row[] = $transaction->service == "payout" ? ($transaction->debited == 1 ? "Yes" : "No") : "";
+                    $row[] = $transaction->service == "payout" ? ($transaction->refunded == 1 ? "Yes" : "No") : "";
+                    $row[] = $transaction->service == "payout" ? ($transaction->processed == 1 ? "Yes" : "No") : "";
+                }
+
+                $row[] = str_contains(strtolower($transaction->reason ?? ''), 'insufficient') ? "" : ($transaction->reason ?? '');
+                $row[] = $transaction->remarks ?? '';
+                $row[] = $transaction->provider_name ?? '';
+
+                if (in_array($type, ['payin', 'qr', 'all'])) {
+                    $row[] = $transaction->service == "payin" && $transaction->status == "Success" ? ($transaction->settled == 1 ? "Yes" : "Pending") : "";
+                    $row[] = $transaction->settlement_txn_id ?? '';
+                }
+
+                $row[] = $transaction->txn_complete_time ?? '';
+                $row[] = $transaction->updated_at ?? '';
+                $row[] = $transaction->created_at ?? '';
+
+                fputcsv($output, $row);
             }
-            $row[] = $transaction->reference_id;
-            $row[] = $transaction->rrn;
-            $row[] = $transaction->status;
-            $row[] = $transaction->name;
-            if (in_array($type, ['payin', 'all'])) {
-                $row[] = $transaction->email;
-            }
-            $row[] = $transaction->phone;
-            $row[] = $transaction->amount;
-            $row[] = $transaction->charges;
-            $row[] = $transaction->gst;
-            $row[] = $transaction->net_amount;
-            if (in_array($type, ['payin', 'qr', 'all'])) {
-                $row[] = $transaction->payee_name;
-                $row[] = $transaction->payee_vpa;
-                $row[] = $transaction->payee_phone;
-            }
-
-            if (in_array($type, ['payout', 'all'])) {
-                $row[] = $transaction->account_number;
-                $row[] = $transaction->ifsc_code;
-                $row[] = $transaction->bank_name;
-            }
-
-            $row[] = $transaction->order_id;
-            $row[] = $transaction->source;
-
-            if (in_array($type, ['payout', 'all'])) {
-                $row[] = $transaction->service == "payout" ? ($transaction->debited == 1 ? "Yes" : "No") : "";
-                $row[] = $transaction->service == "payout" ? ($transaction->refunded == 1 ? "Yes" : "No") : "";
-                $row[] = $transaction->service == "payout" ? ($transaction->processed == 1 ? "Yes" : "No") : "";
-            }
-
-            $row[] = str_replace(",", " ", str_contains(strtolower($transaction->reason), 'insufficient') ? "" : $transaction->reason);
-            $row[] = str_replace(",", " ", $transaction->remarks);
-            $row[] = $transaction->provider_name; // provider name
-          
-
-            if (in_array($type, ['payin', 'qr', 'all'])) {
-                $row[] = $transaction->service == "payin" && $transaction->status == "Success" ? ($transaction->settled == 1 ? "Yes" : "Pending") : "";
-                $row[] = $transaction->settlement_txn_id;
-            }
-
-            $row[] = $transaction->txn_complete_time;
-            $row[] = $transaction->updated_at;
-            $row[] = $transaction->created_at;
-
-            echo implode(",", $row);
-            echo "\n";
-            $index++;
-        }
+            fclose($output);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+            'Cache-Control' => 'no-store, no-cache',
+        ]);
     }
 
     public function wallet()
@@ -1169,6 +1175,100 @@ class Tables extends BaseController
                 "advanceDebited" => $extraResult['advance-debit'] ?? 0,
             ],
         ], 200);
+    }
+
+    public function export_wallet_transactions()
+    {
+        $session = session();
+        $admin = new \App\Models\Admin();
+        $admin = $admin->find($session->get('admin_id'));
+        if (!$admin) {
+            abort(401, 'Unauthorized');
+        }
+
+        $availableSearchKeys = ["txnid"];
+        $request = request();
+        $searchBy = $request->input('searchBy');
+        $searchValue = $request->input('searchValue');
+        $type = $request->input('type');
+        $startDate = $request->input('startDate');
+        $endDate = $request->input('endDate');
+        $user_id = $request->input('user_id');
+
+        $transactionModel = new \App\Models\Wallet();
+        $builder = $transactionModel->query();
+
+        $builder->selectRaw("wallet_transactions.*, users.name as user");
+        $builder->join("users", "users.id", "=", "wallet_transactions.user_id");
+
+        if (!empty($type) && $type != "all") {
+            if ($type == "REFUND-DEBITED") {
+                $builder->where('wallet_transactions.remarks', $type);
+            } else {
+                $builder->where('wallet_transactions.txn_type', $type);
+            }
+        }
+
+        if (!empty($startDate)) {
+            $builder->where('wallet_transactions.created_at', '>=', $startDate . " 00:00:00");
+        }
+        if (!empty($endDate)) {
+            $builder->where('wallet_transactions.created_at', '<=', $endDate . " 23:59:59");
+        }
+
+        if (!empty($user_id) && $user_id > 0) {
+            $builder->where("wallet_transactions.user_id", $user_id);
+        }
+
+        if (!empty($searchBy) && !empty($searchValue)) {
+            if (in_array($searchBy, $availableSearchKeys)) {
+                $builder->like('wallet_transactions.' . $searchBy, $searchValue);
+            }
+        }
+
+        $builder->orderBy('wallet_transactions.id', "DESC");
+
+        $filename = 'wallet_transactions_' . date('Ymd_His') . '.csv';
+
+        $columns = [
+            "SR",
+            "USER",
+            "TYPE",
+            "TXN TYPE",
+            "TXN ID",
+            "OPENING",
+            "AMOUNT",
+            "REMARKS",
+            "CLOSING",
+            "DATE TIME"
+        ];
+
+        return response()->streamDownload(function() use ($builder, $columns) {
+            $output = fopen('php://output', 'w');
+            fputs($output, "\xEF\xBB\xBF");
+            fputcsv($output, $columns);
+
+            $index = 1;
+            foreach ($builder->cursor() as $transaction) {
+                fputcsv($output, [
+                    $index++,
+                    $transaction->user ?? '',
+                    $transaction->type ?? '',
+                    $transaction->txn_type ?? '',
+                    $transaction->txnid ?? '',
+                    $transaction->opening ?? '0',
+                    $transaction->net_amount ?? '0',
+                    $transaction->remarks ?? '',
+                    $transaction->closing ?? '0',
+                    $transaction->created_at ?? ''
+                ]);
+            }
+            fclose($output);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Cache-Control' => 'no-store, no-cache',
+        ]);
     }
 
     public function credits()
@@ -1406,7 +1506,7 @@ class Tables extends BaseController
                 } elseif ($searchBy == "vpa") {
                     $builder->where('transactions.payee_vpa', 'like', '%' . $searchValue . '%');
                 } else {
-                    $builder->like('chargebacks.' . $searchBy, $searchValue);
+                    $builder->where('chargebacks.' . $searchBy, 'like', '%' . $searchValue . '%');
                 }
             }
         }
@@ -1422,43 +1522,40 @@ class Tables extends BaseController
             $builder->where("chargebacks.status", $status);
         }
 
-        $filteredBuilder = clone $builder;
-        $filteredChargebacks = $filteredBuilder->count();
         $builder->orderBy('chargebacks.id', "DESC");
-        $query = $builder->get();
-        $chargebacks = $query;
-        $data = [];
-        $index = 1;
         $columns = ["ID", "USER", "TXNID", "PAYEE NAME", "PAYEE PHONE", "PAYEE VPA", "RRN", "AMOUNT", "REFUND RRN", "STATUS", "TXN COMPLETE TIME", "CHARGEBACK TIME", "NO OF CHARGEBACK", "LAST UPDATE TIME"];
-        foreach ($chargebacks as $chargeback) {
-            $data[] = [
-                $index,
-                $chargeback->user_name,
-                $chargeback->txnid,
-                $chargeback->payee_name,
-                $chargeback->payee_phone,
-                $chargeback->payee_vpa,
-                $chargeback->rrn,
-                $chargeback->amount,
-                $chargeback->refund_rrn,
-                $chargeback->status,
-                $chargeback->txn_complete_time,
-                $chargeback->chargeback_time,
-                $chargeback->no,
-                $chargeback->last_update,
-            ];
-            $index++;
-        }
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="chargebacks.csv"');
-        header('Pragma: no-cache');
-        header('Expires: 0');
-        echo implode(",", $columns);
-        echo "\n";
-        foreach ($data as $row) {
-            echo implode(",", $row);
-            echo "\n";
-        }
+        $filename = 'chargebacks_' . date('Ymd_His') . '.csv';
+
+        return response()->streamDownload(function() use ($builder, $columns) {
+            $output = fopen('php://output', 'w');
+            fputs($output, "\xEF\xBB\xBF");
+            fputcsv($output, $columns);
+            $index = 1;
+
+            foreach ($builder->cursor() as $chargeback) {
+                fputcsv($output, [
+                    $index++,
+                    $chargeback->user_name ?? '',
+                    $chargeback->txnid ?? '',
+                    $chargeback->payee_name ?? '',
+                    $chargeback->payee_phone ?? '',
+                    $chargeback->payee_vpa ?? '',
+                    $chargeback->rrn ?? '',
+                    $chargeback->amount ?? '',
+                    $chargeback->refund_rrn ?? '',
+                    $chargeback->status ?? '',
+                    $chargeback->txn_complete_time ?? '',
+                    $chargeback->chargeback_time ?? '',
+                    $chargeback->no ?? '',
+                    $chargeback->last_update ?? '',
+                ]);
+            }
+            fclose($output);
+        }, $filename, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+            'Cache-Control' => 'no-store, no-cache',
+        ]);
     }
 
     public function error_logs()
@@ -1747,8 +1844,6 @@ class Tables extends BaseController
         $admin = $admin->find($session->get('admin_id'));
 
         $filename = 'admin_profit_report_' . date('Ymd_His') . '.csv';
-        header('Content-Type: text/csv');
-        header('Content-Disposition: attachment; filename="' . $filename . '"');
 
         $request = request();
         $startDate = $request->input('startDate') ? ($request->input('startDate') . " 00:00:00") : date('Y-m-d 00:00:00', strtotime('-6 days'));
@@ -1788,9 +1883,10 @@ class Tables extends BaseController
         $allSlabs = \App\Models\Providerslab::all();
         $gstRate = \App\Models\Settings::getGSTRate();
 
-        $transactions = $builder->orderBy('transactions.id', 'DESC')->get();
+        return response()->streamDownload(function() use ($builder, $allProviders, $allSlabs, $gstRate) {
+            $transactions = $builder->orderBy('transactions.id', 'DESC')->get();
 
-        $output = fopen('php://output', 'w');
+            $output = fopen('php://output', 'w');
         fputcsv($output, [
             '#',
             'Txn ID',
@@ -1863,7 +1959,7 @@ class Tables extends BaseController
             $i++;
         }
 
-        fclose($output);
-        exit;
+            fclose($output);
+        }, $filename, ['Content-Type' => 'text/csv']);
     }
 }

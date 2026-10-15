@@ -9,9 +9,7 @@ class Charge extends Model
 {
     public function payin(float $amount, int $packageId, int $providerId)
     {
-        $db = \Illuminate\Support\Facades\DB::connection();
-
-        $packageSlab = $db->table('package_slabs')
+        $packageSlab = DB::table('package_slabs')
             ->where('service', 'payin')
             ->where('package_id', $packageId)
             ->whereRaw('CAST(min_amount AS DECIMAL(15,2)) <= ?', [$amount])
@@ -29,7 +27,7 @@ class Charge extends Model
         $provCharge = 0.0;
         $provGst = 0.0;
         if ($providerId > 0) {
-            $provSlab = $db->table('provider_slabs')
+            $provSlab = DB::table('provider_slabs')
                 ->where('provider_id', $providerId)
                 ->whereRaw('CAST(min_amount AS DECIMAL(15,2)) <= ?', [$amount])
                 ->whereRaw('CAST(max_amount AS DECIMAL(15,2)) >= ?', [$amount])
@@ -51,9 +49,7 @@ class Charge extends Model
     
     public function payout(float $amount, int $packageId, int $providerId)
     {
-        $db = \Illuminate\Support\Facades\DB::connection();
-
-        $packageSlab = $db->table('package_slabs')
+        $packageSlab = DB::table('package_slabs')
             ->where('service', 'payout')
             ->where('package_id', $packageId)
             ->whereRaw('CAST(min_amount AS DECIMAL(15,2)) <= ?', [$amount])
@@ -71,7 +67,7 @@ class Charge extends Model
         $provCharge = 0.0;
         $provGst = 0.0;
         if ($providerId > 0) {
-            $provSlab = $db->table('provider_slabs')
+            $provSlab = DB::table('provider_slabs')
                 ->where('provider_id', $providerId)
                 ->whereRaw('CAST(min_amount AS DECIMAL(15,2)) <= ?', [$amount])
                 ->whereRaw('CAST(max_amount AS DECIMAL(15,2)) >= ?', [$amount])

@@ -1,6 +1,6 @@
 <!DOCTYPE html>
-<html style="--primary-rgb: <?= env("colors.primary.rgb", "32, 143, 132"); ?>;" lang="en" dir="ltr" data-nav-layout="vertical"
-    data-theme-mode="light" data-header-styles="light" data-menu-styles="light" data-toggled="open" loader="enable">
+<html style="--primary-rgb: <?= env("colors.primary.rgb", "32, 143, 132"); ?>;" lang="en" dir="ltr" data-nav-layout="vertical" data-vertical-style="overlay"
+    data-theme-mode="light" data-header-styles="light" data-menu-styles="light" loader="enable">
 
 <head>
 
@@ -94,6 +94,34 @@
         .slide.has-sub>.side-menu__item
         {
           margin-block: 0px !important;
+        }
+
+        .app-sidebar .slide.has-sub.open > .slide-menu {
+            display: block;
+        }
+
+        [data-vertical-style=overlay][data-toggled=icon-overlay-close]:not([data-icon-overlay=open]) .app-sidebar .slide.has-sub.open > .slide-menu {
+            display: none !important;
+        }
+
+        .app-sidebar {
+            background: #ffffff !important;
+            border-inline-end: 1px solid #e1e9e8 !important;
+        }
+
+        .app-sidebar .main-sidebar-header {
+            background: #ffffff !important;
+            border-block-end: 1px solid #e1e9e8 !important;
+            border-inline-end: 1px solid #e1e9e8 !important;
+        }
+
+        .main-sidebar {
+            background: #ffffff !important;
+        }
+
+        [data-vertical-style=overlay][data-toggled=icon-overlay-close][data-icon-overlay=open] .app-sidebar {
+            background: #ffffff !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
         }
 
         #sidebar-scroll{
@@ -328,7 +356,7 @@
                                 <span class="side-menu__label">Users</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1" data-popper-placement="bottom" style="position: relative; left: 0px; top: 0px; margin: 0px; transform: translate3d(119.5px, 173.5px, 0px);">
+                            <ul class="slide-menu child1">
                                
                                 <li class="slide"><a onclick="navigate('/admin/users/active'); activeNavigation(this);" class="side-menu__item <?=  $page == "active-users"?"active":""?>"><i class="ti ti-circle-check mx-2"></i> Active Users</a></li>
                                
@@ -350,7 +378,7 @@
                                 <span class="side-menu__label">Packages</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1" data-popper-placement="bottom" style="position: relative; left: 0px; top: 0px; margin: 0px; transform: translate3d(119.5px, 173.5px, 0px);">
+                            <ul class="slide-menu child1">
                             
                                 <li class="slide"><a onclick="navigate('/admin/packages/add'); activeNavigation(this);" class="side-menu__item <?=  $page == "add_package"?"active":""?>"><i class="ti ti-circle-plus mx-2"></i> New Package</a></li>
                                
@@ -368,7 +396,7 @@
                                 <span class="side-menu__label">Providers</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1" data-popper-placement="bottom" style="position: relative; left: 0px; top: 0px; margin: 0px; transform: translate3d(119.5px, 173.5px, 0px);">
+                            <ul class="slide-menu child1">
                                 
                                 <li class="slide"><a onclick="navigate('/admin/providers/payin'); activeNavigation(this);" class="side-menu__item <?=  $page == "payin_providers"?"active":""?>"><i class="ti ti-arrow-down-left mx-2"></i> Payin Providers</a></li>
                 
@@ -387,7 +415,7 @@
                                 <span class="side-menu__label">Fund Requests</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1" data-popper-placement="bottom" style="position: relative; left: 0px; top: 0px; margin: 0px; transform: translate3d(119.5px, 173.5px, 0px);">
+                            <ul class="slide-menu child1">
                                
                                
                                  <li class="slide"><a onclick="navigate('/admin/fund-requests/pending'); activeNavigation(this);" class="side-menu__item <?=  $page == "pending_fund_requests"?"active":""?>"><i class="ti ti-history mx-2"></i> Pending</a></li>
@@ -411,7 +439,7 @@
                                 <span class="side-menu__label">User Credits</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1" data-popper-placement="bottom" style="position: relative; left: 0px; top: 0px; margin: 0px; transform: translate3d(119.5px, 173.5px, 0px);">
+                            <ul class="slide-menu child1">
                                
                              
                                 <li class="slide"><a onclick="navigate('/admin/credits/add'); activeNavigation(this);" class="side-menu__item <?=  $page == "add_credits"?"active":""?>"><i class="ti ti-circle-plus mx-2"></i> Add Credit</a></li>
@@ -433,7 +461,7 @@
                                 <span class="side-menu__label">Transactions</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1" data-popper-placement="bottom" style="position: relative; left: 0px; top: 0px; margin: 0px; transform: translate3d(119.5px, 173.5px, 0px);">
+                            <ul class="slide-menu child1">
                                
                                 <li class="slide"><a onclick="navigate('/admin/transactions/all'); activeNavigation(this);" class="side-menu__item <?=  $page == "all_transactions"?"active":""?>"><i class="ti ti-list mx-2"></i> All Transactions</a></li>
                 
@@ -455,7 +483,7 @@
                                 <span class="side-menu__label">Hold Transactions</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1" data-popper-placement="bottom" style="position: relative; left: 0px; top: 0px; margin: 0px; transform: translate3d(119.5px, 173.5px, 0px);">
+                            <ul class="slide-menu child1">
                                
                                 <li class="slide"><a onclick="navigate('/admin/holdtransactions/hold'); activeNavigation(this);" class="side-menu__item <?=  $page == "hold_transactions"?"active":""?>"><i class="ti ti-circle-minus mx-2"></i> On Hold</a></li>
                 
@@ -481,7 +509,7 @@
                                 <span class="side-menu__label">Settlements</span>
                                 <i class="fe fe-chevron-right side-menu__angle"></i>
                             </a>
-                            <ul class="slide-menu child1" data-popper-placement="bottom" style="position: relative; left: 0px; top: 0px; margin: 0px; transform: translate3d(119.5px, 173.5px, 0px);">
+                            <ul class="slide-menu child1">
                                
                                 <li class="slide"><a onclick="navigate('/admin/settlements/pending'); activeNavigation(this);" class="side-menu__item <?=  $page == "settlement_pending"?"active":""?>"><i class="ti ti-history mx-2"></i> Pending</a></li>
                                 

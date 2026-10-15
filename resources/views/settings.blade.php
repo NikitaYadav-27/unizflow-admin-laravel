@@ -61,9 +61,7 @@ $settingsModel = new \App\Models\Settings();
                             <i class="ti ti-device-floppy me-1"></i> Save
                         </button>
                     </div>
-                    <small class="text-muted d-block mt-2">
-                        <i class="ti ti-info-circle me-1 text-primary"></i>Applied to transactions when GST is enabled on Package Slabs (default: 18%).
-                    </small>
+                   
                 </div>
             </form>
         </div>
