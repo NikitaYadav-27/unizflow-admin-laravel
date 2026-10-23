@@ -1962,4 +1962,74 @@ class Tables extends BaseController
             fclose($output);
         }, $filename, ['Content-Type' => 'text/csv']);
     }
+
+    public function payin_transactions()
+    {
+        $availableSearchKeys = ["rrn", "txnid", "merchant_txnid", "name", "phone", "status"];
+        $request = request();
+        $offset = (int) $request->input('start', 0);
+        $limit = (int) $request->input('length', 10);
+        if ($limit <= 0) {
+            $limit = 10;
+        }
+        $searchBy = $request->input('searchBy');
+        $searchValue = $request->input('searchValue');
+        $draw = (int) $request->input('draw');
+        $settlementId = $request->input('settlementId');
+
+        $builder = \App\Models\Transaction::query()->where('service', 'payin');
+
+        if (!empty($settlementId)) {
+            $decryptedSettlementId = openssl_decrypt(
+                hex2bin($settlementId),
+                'AES-256-CBC',
+                env("encryption.key"),
+                OPENSSL_RAW_DATA,
+                substr(hash('sha256', env("encryption.key")), 0, 16)
+            );
+            $targetId = ($decryptedSettlementId !== false && $decryptedSettlementId > 0) ? $decryptedSettlementId : $settlementId;
+            $builder->where('settlement_id', $targetId);
+        }
+
+        $totalTransactions = (clone $builder)->count();
+
+        if (!empty($searchBy) && !empty($searchValue) && in_array($searchBy, $availableSearchKeys)) {
+            $builder->where($searchBy, "LIKE", "%" . trim($searchValue, "\"'") . "%");
+        }
+
+        $filteredTransactions = (clone $builder)->count();
+
+        $transactions = $builder->orderBy('id', "DESC")->offset($offset)->limit($limit)->get();
+        $data = [];
+        $index = $offset + 1;
+
+        foreach ($transactions as $transaction) {
+            $data[] = [
+                $index,
+                $transaction->name ?? '',
+                $transaction->phone ?? '',
+                $transaction->txnid ?? '',
+                $transaction->rrn ?? '',
+                "₹ " . number_format((float) ($transaction->amount ?? 0), 2),
+                "₹ " . number_format((float) ($transaction->charges ?? 0), 2),
+                "₹ " . number_format((float) ($transaction->gst ?? 0), 2),
+                "₹ " . number_format((float) ($transaction->net_amount ?? 0), 2),
+                $this->getStatusSpan($transaction->status ?? 'Pending'),
+                $transaction->payee_name ?? '',
+                $transaction->payee_vpa ?? '',
+                $transaction->created_at ? (string) $transaction->created_at : '',
+                $transaction->txn_complete_time ? (string) $transaction->txn_complete_time : '',
+                $transaction->remarks ?? ''
+            ];
+            $index++;
+        }
+
+        return response()->json([
+            'draw' => $draw,
+            'recordsTotal' => $totalTransactions,
+            'recordsFiltered' => $filteredTransactions,
+            'data' => $data
+        ]);
+    }
 }
+

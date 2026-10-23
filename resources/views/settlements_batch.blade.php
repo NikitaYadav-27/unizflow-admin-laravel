@@ -113,7 +113,10 @@
             }
         );
 
-        document.querySelector(".card-body").append(document.querySelectorAll("#dataTable_wrapper .row")[2])
+        let rows = document.querySelectorAll("#dataTable_wrapper .row");
+        if (rows && rows.length > 2 && document.querySelector(".card-body")) {
+            document.querySelector(".card-body").append(rows[2]);
+        }
     }
 
     function changeLength(value) {

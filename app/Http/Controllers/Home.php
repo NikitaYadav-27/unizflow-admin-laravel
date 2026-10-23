@@ -545,8 +545,12 @@ class Home extends BaseController
                 return redirect('/');
             }
             $settlementModel = new \App\Models\Settlement();
-            $data['settlement'] = $settlementModel->find($id);
-           return view('settlements_batch', $data);
+            $settlement = $settlementModel->find($id);
+            if (!$settlement) {
+                return redirect('/admin/settlements/pending');
+            }
+            $data['settlement'] = $settlement;
+            return view('settlements_batch', $data);
         }
     }
     
@@ -1080,13 +1084,14 @@ class Home extends BaseController
             ->where('user_id', $userId)
             ->where(function ($q) use ($startDate, $endDate) {
                 $q->where(function ($q1) use ($startDate, $endDate) {
-                    $q1->whereNotNull('txn_complete_time')
+                    $q1->whereNotNull('success_at')
+                       ->where('success_at', '>=', $startDate)
+                       ->where('success_at', '<=', $endDate);
+                })->orWhere(function ($q2) use ($startDate, $endDate) {
+                    $q2->whereNull('success_at')
+                       ->whereNotNull('txn_complete_time')
                        ->where('txn_complete_time', '>=', $startDate)
                        ->where('txn_complete_time', '<=', $endDate);
-                })->orWhere(function ($q2) use ($startDate, $endDate) {
-                    $q2->whereNull('txn_complete_time')
-                       ->where('created_at', '>=', $startDate)
-                       ->where('created_at', '<=', $endDate);
                 });
             });
 

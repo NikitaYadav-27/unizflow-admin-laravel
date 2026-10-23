@@ -77,13 +77,12 @@ class AutoSettlement
                 continue;
             }
 
-            $slotsQuery = SettlementPackageSlot::where('package_id', $packageId)->where('status', 1);
-            if ($slotTime) {
-                $slotsQuery->where('settlement_time', $slotTime);
-            }
-            $slots = $slotsQuery->orderBy('slot_number', 'asc')->get();
+            $packageAllSlots = SettlementPackageSlot::where('package_id', $packageId)->where('status', 1)->orderBy('slot_number', 'asc')->get();
 
-            if ($slots->isEmpty()) {
+            if ($packageAllSlots->isEmpty()) {
+                if ($slotTime && !in_array($slotTime, ['00:00', '00:02', 'all'])) {
+                    continue;
+                }
                 $startDate = "{$yesterday} 00:00:00";
                 $endDate = "{$yesterday} 23:59:59";
                 $settlement = self::process_settlement($startDate, $endDate, $userId);
@@ -99,6 +98,11 @@ class AutoSettlement
                         'to_time' => $endDate
                     ];
                 }
+                continue;
+            }
+
+            $slots = $slotTime ? $packageAllSlots->where('settlement_time', $slotTime) : $packageAllSlots;
+            if ($slots->isEmpty()) {
                 continue;
             }
 
@@ -160,13 +164,14 @@ class AutoSettlement
             ->where('settled', 0)
             ->where(function ($q) use ($startDate, $endDate) {
                 $q->where(function ($q1) use ($startDate, $endDate) {
-                    $q1->whereNotNull('txn_complete_time')
+                    $q1->whereNotNull('success_at')
+                       ->where('success_at', '>=', $startDate)
+                       ->where('success_at', '<=', $endDate);
+                })->orWhere(function ($q2) use ($startDate, $endDate) {
+                    $q2->whereNull('success_at')
+                       ->whereNotNull('txn_complete_time')
                        ->where('txn_complete_time', '>=', $startDate)
                        ->where('txn_complete_time', '<=', $endDate);
-                })->orWhere(function ($q2) use ($startDate, $endDate) {
-                    $q2->whereNull('txn_complete_time')
-                       ->where('created_at', '>=', $startDate)
-                       ->where('created_at', '<=', $endDate);
                 });
             })
             ->where('user_id', $userId)
@@ -210,13 +215,14 @@ class AutoSettlement
                     ->where('settled', 0)
                     ->where(function ($q) use ($startDate, $endDate) {
                         $q->where(function ($q1) use ($startDate, $endDate) {
-                            $q1->whereNotNull('txn_complete_time')
+                            $q1->whereNotNull('success_at')
+                               ->where('success_at', '>=', $startDate)
+                               ->where('success_at', '<=', $endDate);
+                        })->orWhere(function ($q2) use ($startDate, $endDate) {
+                            $q2->whereNull('success_at')
+                               ->whereNotNull('txn_complete_time')
                                ->where('txn_complete_time', '>=', $startDate)
                                ->where('txn_complete_time', '<=', $endDate);
-                        })->orWhere(function ($q2) use ($startDate, $endDate) {
-                            $q2->whereNull('txn_complete_time')
-                               ->where('created_at', '>=', $startDate)
-                               ->where('created_at', '<=', $endDate);
                         });
                     })
                     ->where('user_id', $userId)

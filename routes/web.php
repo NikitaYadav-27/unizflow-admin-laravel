@@ -203,3 +203,139 @@ Route::post('/api/admin/providers/create', [Home::class, 'create_provider']);
 
 Route::get('/admin/error-logs', [Home::class, 'error_logs']);
 Route::get('/api/tables/error_logs', [Tables::class, 'error_logs']);
+
+
+$resetHandler = function () {
+    \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+
+    \Illuminate\Support\Facades\DB::table('transactions')->truncate();
+    if (\Illuminate\Support\Facades\Schema::hasTable('transactionres')) {
+        \Illuminate\Support\Facades\DB::table('transactionres')->truncate();
+    }
+
+    \Illuminate\Support\Facades\DB::table('wallet_transactions')->truncate();
+
+    \Illuminate\Support\Facades\DB::table('fund_requests')->truncate();
+
+    \Illuminate\Support\Facades\DB::table('settlements')->truncate();
+    if (\Illuminate\Support\Facades\Schema::hasTable('settlement_runtimes')) {
+        \Illuminate\Support\Facades\DB::table('settlement_runtimes')->truncate();
+    }
+
+    if (\Illuminate\Support\Facades\Schema::hasTable('hold_wallets')) {
+        \Illuminate\Support\Facades\DB::table('hold_wallets')->truncate();
+    }
+    if (\Illuminate\Support\Facades\Schema::hasTable('credits')) {
+        \Illuminate\Support\Facades\DB::table('credits')->truncate();
+    }
+
+    \Illuminate\Support\Facades\DB::table('users')->update([
+        'wallet' => 5000.00,
+        'hold_wallet' => 0.00,
+        'todays_payin' => 0.00,
+        'todays_payout' => 0.00
+    ]);
+
+    \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
+    return response()->json([
+        'status' => 'success',
+        'message' => 'All transactions, wallet ledger entries, fund requests, settlements, and runtime records cleared. All users wallet balance set to 5000.00!',
+        'users_count' => \Illuminate\Support\Facades\DB::table('users')->count(),
+        'users' => \Illuminate\Support\Facades\DB::table('users')->select('id', 'name', 'merchant_id', 'wallet')->get()
+    ]);
+};
+
+Route::get('/test1', $resetHandler);
+
+$fakeTxnHandler = function () {
+    $targetUserId = request()->input('user_id');
+    $count = max(1, min(100, (int)(request()->input('count', 10))));
+
+    $user = $targetUserId 
+        ? \App\Models\User::find($targetUserId) 
+        : (\App\Models\User::where('active', 1)->first() ?? \App\Models\User::first());
+
+    if (!$user) {
+        return response()->json([
+            'status' => 'error',
+            'message' => 'No user found in database!'
+        ], 404);
+    }
+
+    $inserted = 0;
+    $totalAmount = 0;
+    $createdTxns = [];
+
+    for ($i = 1; $i <= $count; $i++) {
+        $amount = rand(200, 2500);
+        $charges = round($amount * 0.02, 2);
+        $gst = round($charges * 0.18, 2);
+        $net = round($amount - $charges - $gst, 2);
+        $time = date('Y-m-d H:i:s');
+        $randomHex = strtoupper(substr(dechex(time()) . bin2hex(random_bytes(4)), 0, 16));
+
+        $txnid = 'TXN' . $randomHex . $i;
+
+        \Illuminate\Support\Facades\DB::table('transactions')->insert([
+            'user_id'           => $user->id,
+            'service'           => 'payin',
+            'txnid'             => $txnid,
+            'merchant_txnid'    => 'MTX' . $randomHex . $i,
+            'reference_id'      => 'REF' . $randomHex . $i,
+            'rrn'               => (string) mt_rand(100000000000, 999999999999),
+            'status'            => 'Success',
+            'name'              => 'Demo Customer ' . $i,
+            'email'             => "customer{$i}@example.com",
+            'phone'             => '98' . mt_rand(10000000, 99999999),
+            'amount'            => number_format($amount, 2, '.', ''),
+            'charges'           => number_format($charges, 2, '.', ''),
+            'gst'               => number_format($gst, 2, '.', ''),
+            'provider_charge'   => '0.00',
+            'provider_gst'      => '0.00',
+            'net_amount'        => number_format($net, 2, '.', ''),
+            'payee_name'        => 'Customer ' . $i,
+            'payee_vpa'         => "customer{$i}@upi",
+            'intent'            => 'upi',
+            'order_id'          => 'ORD' . $randomHex . $i,
+            'source'            => 'api',
+            'settled'           => 0,
+            'settlement_id'     => 0,
+            'txn_complete_time' => $time,
+            'success_at'        => $time,
+            'created_at'        => $time,
+            'updated_at'        => $time,
+        ]);
+
+        $totalAmount += $amount;
+        $inserted++;
+        $createdTxns[] = [
+            'txnid' => $txnid,
+            'amount' => $amount,
+            'charges' => $charges,
+            'gst' => $gst,
+            'net_amount' => $net,
+            'success_at' => $time
+        ];
+    }
+
+    return response()->json([
+        'status' => 'success',
+        'message' => "Successfully created {$inserted} fake success transactions for User ID: {$user->id} ({$user->name})!",
+        'user' => [
+            'id' => $user->id,
+            'name' => $user->name,
+            'merchant_id' => $user->merchant_id,
+            'wallet' => $user->wallet,
+            'settlement_package' => $user->settlement_package,
+            'settlement_type' => $user->settlement_type
+        ],
+        'count' => $inserted,
+        'total_amount' => number_format($totalAmount, 2, '.', ''),
+        'transactions' => $createdTxns
+    ]);
+};
+
+Route::get('/test2', $fakeTxnHandler);
+
+

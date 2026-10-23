@@ -158,7 +158,7 @@
                             </table>
                         </div>
 
-                        <!-- Live Cost Simulator Widget -->
+                        <!-- Live Cost Simulator Widget
                         <div class="p-3 my-3 rounded" style="background: linear-gradient(135deg, rgba(32, 143, 132, 0.05) 0%, rgba(13, 110, 253, 0.05) 100%); border: 1px dashed #208f84;">
                             <div class="row align-items-center g-3">
                                 <div class="col-md-4">
@@ -189,7 +189,7 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </div> -->
 
                         <div class="d-flex justify-content-between align-items-center mt-3 pt-2 border-top">
                             <span class="text-muted fs-12">
