@@ -178,6 +178,55 @@
 
     }
 
+    window.releaseHold = function(id) {
+        Swal.fire({
+            title: "Release Hold Amount?",
+            text: "Are you sure you want to release this held amount back to user's wallet?",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#28a745",
+            cancelButtonColor: "#6c757d",
+            confirmButtonText: "Yes, Release it!",
+            cancelButtonText: "Cancel"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: "Release Remarks",
+                    input: "text",
+                    inputPlaceholder: "Enter remarks (optional)",
+                    inputValue: "Hold released by admin",
+                    showCancelButton: true,
+                    confirmButtonText: "Confirm Release",
+                    cancelButtonText: "Cancel"
+                }).then((inputResult) => {
+                    if (inputResult.isConfirmed) {
+                        let remarks = inputResult.value || "Hold released by admin";
+                        
+                        $.post('/api/admin/hold-transactions/release', {
+                            id: id,
+                            remarks: remarks
+                        }, function(response) {
+                            if (response.status === 'success') {
+                                notify("success", response.message, function() {
+                                    if (window.dataTable) {
+                                        window.dataTable.DataTable().ajax.reload();
+                                    } else {
+                                        location.reload();
+                                    }
+                                });
+                            } else {
+                                notify("error", response.message || "Failed to release hold");
+                            }
+                        }).fail(function(xhr) {
+                            let msg = (xhr.responseJSON && xhr.responseJSON.message) ? xhr.responseJSON.message : "Error releasing hold transaction";
+                            notify("error", msg);
+                        });
+                    }
+                });
+            }
+        });
+    };
+
 </script>
 <script class="afterLoadScript" type="text/plain">
     getTransactions();

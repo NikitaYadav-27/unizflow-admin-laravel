@@ -81,7 +81,7 @@
                                     <?= strtoupper($currentProvider->type); ?>
                                 </span>
                             </h6>
-                            <small class="text-muted">Gateway: <?= htmlspecialchars($currentProvider->gateway); ?> &bull; Daily Limit: ₹<?= number_format($currentProvider->daily_limit ?? 0, 2); ?></small>
+                            <small class="text-muted">Gateway: <?= htmlspecialchars($currentProvider->gateway); ?> &bull; Daily Limit: ₹<?= number_format(floatval($currentProvider->daily_limit ?? 0), 2); ?></small>
                         </div>
                     </div>
                     <div class="text-end">

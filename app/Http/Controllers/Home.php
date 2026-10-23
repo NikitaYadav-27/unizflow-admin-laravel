@@ -84,6 +84,105 @@ class Home extends BaseController
             return view('hold_transactions', $data);
         } 
     }
+
+    public function release_hold_transaction() {
+        $session = session();
+        if (!$session->get('admin_id')) {
+            return response()->json(["status" => "error", "message" => "Unauthorized access"], 401);
+        }
+
+        $id = request()->input('id');
+        $remarks = request()->input('remarks');
+
+        if (!$id) {
+            return response()->json(["status" => "error", "message" => "Invalid Transaction ID"], 400);
+        }
+
+        $holdModel = new \App\Models\HoldWallet();
+        $holdTxn = $holdModel->find($id);
+
+        if (!$holdTxn) {
+            return response()->json(["status" => "error", "message" => "Hold transaction not found"], 404);
+        }
+
+        if ($holdTxn->type !== 'hold') {
+            return response()->json(["status" => "error", "message" => "Transaction is not currently on hold"], 400);
+        }
+
+        $alreadyReleased = $holdModel->where('txnid', $holdTxn->txnid)->where('type', 'released')->exists();
+        if ($alreadyReleased) {
+            return response()->json(["status" => "error", "message" => "This transaction has already been released"], 400);
+        }
+
+        \Illuminate\Support\Facades\DB::beginTransaction();
+        try {
+            $userModel = new \App\Models\User();
+            $user = $userModel->lockForUpdate()->find($holdTxn->user_id);
+            if (!$user) {
+                \Illuminate\Support\Facades\DB::rollBack();
+                return response()->json(["status" => "error", "message" => "User not found"], 404);
+            }
+
+            $amount = floatval($holdTxn->amount);
+            if ($amount <= 0) {
+                \Illuminate\Support\Facades\DB::rollBack();
+                return response()->json(["status" => "error", "message" => "Invalid transaction amount"], 400);
+            }
+
+            $userWalletOpening = floatval($user['wallet'] ?? 0);
+            $userHoldOpening = floatval($user['hold_wallet'] ?? 0);
+
+            $userWalletClosing = number_format($userWalletOpening + $amount, 2, '.', '');
+            $userHoldClosing = number_format(max(0, $userHoldOpening - $amount), 2, '.', '');
+
+            $userModel->where('id', $user['id'])->update([
+                'wallet' => $userWalletClosing,
+                'hold_wallet' => $userHoldClosing
+            ]);
+
+            $releaseRemarks = !empty($remarks) ? $remarks : ("Released hold for " . $holdTxn->txnid);
+            $holdModel->create([
+                'user_id' => $user['id'],
+                'type' => 'released',
+                'txnid' => $holdTxn->txnid,
+                'amount' => number_format($amount, 2, '.', ''),
+                'opening' => number_format($userHoldOpening, 2, '.', ''),
+                'closing' => $userHoldClosing,
+                'reason' => $releaseRemarks,
+                'processed' => 1
+            ]);
+
+            $walletTxnId = $this->generateTxnId();
+            $walletModel = new \App\Models\Wallet();
+            $walletModel->create([
+                'user_id' => $user['id'],
+                'type' => 'CREDIT',
+                'txn_type' => 'HOLD-RELEASE',
+                'txnid' => $walletTxnId,
+                'amount' => number_format($amount, 2, '.', ''),
+                'charges' => '0',
+                'gst' => '0',
+                'net_amount' => number_format($amount, 2, '.', ''),
+                'processed' => 1,
+                'remarks' => $releaseRemarks,
+                'opening' => number_format($userWalletOpening, 2, '.', ''),
+                'closing' => $userWalletClosing
+            ]);
+
+            \Illuminate\Support\Facades\DB::commit();
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Hold transaction released successfully!'
+            ], 200);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\DB::rollBack();
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Failed to release hold: ' . $e->getMessage()
+            ], 500);
+        }
+    }
     
     public function users_bulk_action() {
         $session = session();
