@@ -79,7 +79,7 @@
                         <div class="col-lg-4">
                             <div class="form-group mb-2">
                                 <label class="mb-1">Bank <span class="text-primary">*</span></label>
-                                <input type="text" readonly name="bank_name" id="bank_name"
+                                <input type="text"  name="bank_name" id="bank_name"
                                     class="form-control rounded-end" placeholder="Bank Name" required>
                                 <div class="invalid-feedback text-muted"></div>
                             </div>
@@ -89,7 +89,7 @@
                        <div class="col-lg-4">
                             <div class="form-group mb-2">
                                 <label class="mb-1">Branch <span class="text-primary">*</span></label>
-                                <input type="text" readonly name="branch_name" id="branch_name"
+                                <input type="text"  name="branch_name" id="branch_name"
                                     class="form-control rounded-end" placeholder="Branch Name" required>
                                 <div class="invalid-feedback text-muted"></div>
                             </div>

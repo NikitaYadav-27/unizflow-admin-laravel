@@ -502,7 +502,7 @@ class Home extends BaseController
             $admin = $admin->find($session->get('admin_id'));
             $data['admin'] = $admin;
             $data['status'] = $status;
-            $data['users'] = (new \App\Models\User())->select(['id', 'name', 'merchant_id'])->where('active', 1)->orderBy('name', 'ASC')->get();
+            $data['users'] = (new \App\Models\User())->select(['id', 'name', 'merchant_id', 'settlement_type'])->where('active', 1)->orderBy('name', 'ASC')->get();
             return view('settlements', $data);
         }
     }
@@ -1206,6 +1206,7 @@ class Home extends BaseController
             "data" => [
                 "user_name" => $user->name,
                 "merchant_id" => $user->merchant_id,
+                "settlement_type" => ucfirst($user->settlement_type ?? 'manual'),
                 "count" => $count,
                 "total_amount" => $totalAmount,
                 "total_charges" => $totalCharges,
@@ -1568,17 +1569,31 @@ class Home extends BaseController
        $admin = new \App\Models\Admin();
        $admin = $admin->find($session->get('admin_id'));
       
-       $input = json_decode(request()->getContent());
+       $raw = json_decode(request()->getContent(), true) ?? [];
+       $userId = request()->input('user_id', $raw['user_id'] ?? null);
+       $package = request()->input('package', $raw['package'] ?? null);
+       $payinProvider = request()->input('payin_provider', $raw['payin_provider'] ?? null);
+       $payoutProvider = request()->input('payout_provider', $raw['payout_provider'] ?? null);
+       $payinLimit = request()->input('payin_limit', $raw['payin_limit'] ?? 0);
+       $payoutLimit = request()->input('payout_limit', $raw['payout_limit'] ?? 0);
+       $payoutPerLimit = request()->input('payout_per_limit', $raw['payout_per_limit'] ?? 0);
+       $settlementPackage = request()->input('settlement_package', $raw['settlement_package'] ?? null);
+       $rawSettlementType = request()->input('settlement_type', $raw['settlement_type'] ?? 'manual');
+       $settlementType = in_array(strtolower($rawSettlementType), ['automatic', 'manual']) ? strtolower($rawSettlementType) : 'manual';
+
+       if (!$userId) {
+           return response()->json(["status" => "error", "message" => "Invalid User ID"], 400);
+       }
+
        $userModel = new \App\Models\User();
-       $settlementType = isset($input->settlement_type) && in_array(strtolower($input->settlement_type), ['automatic', 'manual']) ? strtolower($input->settlement_type) : 'manual';
-       $userModel->where('id', $input->user_id)->update([
-          "package" => $input->package,
-          "payin_provider" => $input->payin_provider,
-          "payout_provider" => $input->payout_provider,
-          "payin_limit" => $input->payin_limit,
-          "payout_limit" => $input->payout_limit,
-          "payout_per_limit" => $input->payout_per_limit,
-          "settlement_package" => $input->settlement_package,
+       $userModel->where('id', $userId)->update([
+          "package" => $package,
+          "payin_provider" => $payinProvider,
+          "payout_provider" => $payoutProvider,
+          "payin_limit" => $payinLimit,
+          "payout_limit" => $payoutLimit,
+          "payout_per_limit" => $payoutPerLimit,
+          "settlement_package" => $settlementPackage,
           "settlement_type" => $settlementType
        ]);
        return response()->json(["status" => "success", "message" => "User Updated Successfully"], 200);

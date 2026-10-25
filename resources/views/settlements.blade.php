@@ -119,9 +119,24 @@
                 <select class="form-select no-select2" id="manual_settle_user_id" onchange="previewManualSettlement()" style="width: 100%;">
                     <option value="">-- Choose Merchant --</option>
                     <?php if(!empty($users)): ?>
-                        <?php foreach($users as $u): ?>
-                            <option value="<?= $u->id ?>"><?= htmlspecialchars($u->name) ?> (<?= htmlspecialchars($u->merchant_id ?? 'ID: ' . $u->id) ?>)</option>
-                        <?php endforeach; ?>
+                        <?php 
+                            $manualUsers = $users->filter(fn($u) => ($u->settlement_type ?? 'manual') === 'manual');
+                            $autoUsers = $users->filter(fn($u) => ($u->settlement_type ?? 'manual') === 'automatic');
+                        ?>
+                        <?php if($manualUsers->isNotEmpty()): ?>
+                            <optgroup label="Manual Settlement Merchants">
+                                <?php foreach($manualUsers as $u): ?>
+                                    <option value="<?= $u->id ?>"><?= htmlspecialchars($u->name) ?> (<?= htmlspecialchars($u->merchant_id ?? 'ID: ' . $u->id) ?>) [Manual]</option>
+                                <?php endforeach; ?>
+                            </optgroup>
+                        <?php endif; ?>
+                        <?php if($autoUsers->isNotEmpty()): ?>
+                            <optgroup label=" Automatic Settlement Merchants">
+                                <?php foreach($autoUsers as $u): ?>
+                                    <option value="<?= $u->id ?>"><?= htmlspecialchars($u->name) ?> (<?= htmlspecialchars($u->merchant_id ?? 'ID: ' . $u->id) ?>) [Automatic]</option>
+                                <?php endforeach; ?>
+                            </optgroup>
+                        <?php endif; ?>
                     <?php endif; ?>
                 </select>
             </div>
@@ -141,7 +156,10 @@
         <div id="manual_settle_preview_box" class="card border rounded-3 p-3 bg-light mb-0" style="display:none;">
             <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                 <span class="fw-semibold text-primary"><i class="ti ti-calculator me-1"></i>Settlement Batch Preview</span>
-                <span id="prev_spinner" class="spinner-border spinner-border-sm text-primary" style="display:none;"></span>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="prev_type" class="badge bg-secondary-transparent fs-11">Manual</span>
+                    <span id="prev_spinner" class="spinner-border spinner-border-sm text-primary" style="display:none;"></span>
+                </div>
             </div>
             
             <div id="prev_content">
@@ -436,6 +454,9 @@
                     $('#prev_content').css('opacity', '1');
                     if (res.status === 'success' && res.data) {
                         let d = res.data;
+                        let isAuto = (d.settlement_type || '').toLowerCase() === 'automatic';
+                        $('#prev_type').text(isAuto ? '⚡ Automatic Merchant' : '📋 Manual Merchant')
+                                       .attr('class', isAuto ? 'badge bg-success-transparent fs-11' : 'badge bg-secondary-transparent fs-11');
                         $('#prev_count').text(d.count);
                         $('#prev_gross').text(Number(d.total_amount).toFixed(2));
                         $('#prev_charges').text(Number(d.total_charges).toFixed(2));
