@@ -1,9 +1,7 @@
-<?php if (!isset($_GET['turbo'])): ?>
+@if (!request()->has('turbo'))
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <!-- Bootstrap JS -->
     <script src="/assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
-<?php endif; ?>
-
+@endif
 
 <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -13,30 +11,24 @@
     .daterangepicker .ranges li.active,
     .daterangepicker td.active,
     .daterangepicker td.active:hover {
-        background-color: rgb(<?= env("colors.primary.rgb") ?>) !important;
+        background-color: rgb({{ env("colors.primary.rgb") }}) !important;
     }
 </style>
 
 <script src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
 
-<!-- Show Password JS -->
-<!-- <script src="/assets/js/show-password.js?v=2"></script> -->
-
 <script src="/assets/libs/@popperjs/core/umd/popper.min.js"></script>
-
-
 
 <script src="/assets/js/sticky.js"></script>
 
 <script src="/assets/libs/apexcharts/apexcharts.min.js"></script>
 <script src="/assets/libs/chart.js/chart.min.js"></script>
 
-
 <script src="/assets/js/custom.js?v=1994"></script>
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
-<!-- Datatables Cdn -->
+
 <script src="https://cdn.datatables.net/2.2.0/js/dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/2.2.0/js/dataTables.bootstrap5.min.js"></script>
 <script>
@@ -56,20 +48,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
 <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
 
-<script src="https://www.google.com/recaptcha/api.js?render=<?= e(env('recaptcha.key')) ?>"></script>
+<script src="https://www.google.com/recaptcha/api.js?render={{ env('recaptcha.key') }}"></script>
 
 <script src="/assets/libs/sweetalert2/sweetalert2.min.js"></script>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.css" />
 
-
 <script src="https://cdn.jsdelivr.net/npm/daterangepicker/daterangepicker.min.js"></script>
 
-
 <script src="/assets/libs/apexcharts/apexcharts.min.js"></script>
-
-
-
 
 <style>
     table.dataTable.dtr-inline.collapsed>tbody>tr>td.dtr-control:before,
@@ -93,14 +80,11 @@
         box-shadow: 0 0 0 1000px white inset !important;
         -webkit-box-shadow: 0 0 0 1000px white inset !important;
         -webkit-text-fill-color: #212529 !important;
-        /* default text color */
     }
 
-    /* Firefox */
     input[type="number"] {
         -moz-appearance: textfield;
     }
-
 
     table.table th,table.table td{
         padding: 7px 20px !important;
@@ -113,8 +97,6 @@
     }
 
 </style>
-
-
 
 <script>
 
@@ -219,7 +201,6 @@
 
         document.querySelectorAll("form:not(.no-ajax)").forEach((form) => {
 
-            //validation part starts
             form.querySelectorAll('input[validation], select[validation], textarea[validation]').forEach((input) => {
                 input.addEventListener('focus', () => {
                     input.dataset.touched = "true";
@@ -254,12 +235,11 @@
                     }
                 });
             });
-            //validation part ends
 
             form.onsubmit = (e) => {
                 e.preventDefault();
                 
-                //check for validation
+
                 let isValid = true;
                 form.querySelectorAll('input[validation], select[validation], textarea[validation]').forEach((input) => {
                     if (input.dataset.touched === "true") {
@@ -279,9 +259,7 @@
                 if (!isValid) {
                     return false;
                 }
-                //check for validation ends
 
-                //check for empty fields
                 form.querySelectorAll('input[required], select[required], textarea[required]').forEach((input) => {
                     if (input.value == "") {
                         isValid = false;
@@ -292,11 +270,10 @@
                         $(input).siblings(".invalid-feedback").html("");
                     }
                 });
-                //check for empty fields ends
+
                 if (!isValid) {
                     return false;
                 }
-
 
                 form.querySelector("button[type=submit]").disabled = true;
                 let buttonText = form.querySelector("button[type=submit]").innerHTML;
@@ -306,7 +283,7 @@
 
                     try {
                         grecaptcha.ready(function () {
-                            grecaptcha.execute('<?= e(env('recaptcha.key')) ?>', { action: 'submit' }).then(function (token) {
+                            grecaptcha.execute('{{ env('recaptcha.key') }}', { action: 'submit' }).then(function (token) {
                                 let input = document.createElement('input');
                                 input.type = 'hidden';
                                 input.name = 'captcha';
@@ -326,8 +303,6 @@
                 } else {
                     submitForm(form, buttonText);
                 }
-
-
 
             }
         });
@@ -364,9 +339,7 @@
 
     }
 
-
     function notify(status, msg, callback = null) {
-
 
         Swal.fire({
             title: msg,
@@ -381,11 +354,7 @@
 
     }
 
-    window.first = <?php if (session()->get("user_id")) {
-        echo "false";
-    } else {
-        echo "true";
-    } ?>;
+    window.first = {{ session()->has('user_id') ? 'false' : 'true' }};
 
     function navigate(path, complete = false, callback = null) {
         
@@ -404,9 +373,6 @@
             clearInterval(interval);
          });
         }catch(e){}
-
-
-
 
         try {
             if (typeof $.fn.DataTable !== 'undefined' && $.fn.DataTable.isDataTable('#dataTable')) {
@@ -439,11 +405,8 @@
 
                             }
 
-
                         });
                     } catch (e) { }
-
-
 
                     try {
                         document.querySelectorAll("link").forEach((old_link) => {
@@ -476,11 +439,7 @@
                         }
                     }, 500);
 
-
-
-
                 }, 50);
-
 
             } else {
 
@@ -495,7 +454,6 @@
                 
                 try{ $("#dashLoader").addClass("d-none").removeClass("d-flex"); }catch(e){}
 
-
                 document.querySelectorAll("#innerBody script").forEach((old_script) => {
                     let script = document.createElement("script");
                     if (old_script.className != "afterLoadScript") {
@@ -503,7 +461,6 @@
                         document.querySelector("#innerBody").append(script);
                         old_script.remove();
                     }
-
 
                 });
 
@@ -523,7 +480,6 @@
                     }
                 }, 50);
 
-
             }
 
             setTimeout(() => {
@@ -542,13 +498,11 @@
             });
 
         } catch (e) {
-            //console.log("Error",e);
         }
 
         history.pushState({}, "", path);
 
     }
-
 
     function closeDropdown(ele) {
         ele.parentElement.parentElement.className = ele.parentElement.parentElement.className.replace("show", "");
@@ -558,14 +512,11 @@
         $(".side-menu__item").removeClass("active");
         ele.className = 'side-menu__item active';
         if (document.documentElement.clientWidth <= 992) {
-            //hide sidebar
             document.querySelector("html").setAttribute("data-toggled", "close");
             document.querySelector("#responsive-overlay").className = '';
         }
 
-
     }
-
 
     window.onload = function () {
         executeComponentScript();
@@ -580,9 +531,7 @@
             try { func(); } catch (e) { }
         });
 
-
     }
-
 
     function executeComponentScript() {
         try { $('select:not(.no-select2)').select2(); } catch (e) { }

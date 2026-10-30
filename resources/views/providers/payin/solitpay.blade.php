@@ -1,14 +1,10 @@
-<?php 
-$userModel = new \App\Models\User();
-$users = $userModel->get();
-$transactionModel = new \App\Models\Transaction();
-$providerSlabModel = new \App\Models\Providerslab();
-$providerSlabs = $providerSlabModel->where('provider_id', $provider['id'])->get();
-
-?><div class="card custom-card">
+@php
+$users = \App\Models\User::all();
+$providerSlabs = \App\Models\Providerslab::where('provider_id', $provider['id'] ?? $provider->id)->get();
+@endphp<div class="card custom-card">
   <div class="card-header d-flex justify-content-between">
-    <h6 class="card-title mb-0"> <?= $provider['name'];?> </h6>
-    <img style="width: 60px; height: 30px; object-fit: contain;" onerror="this.onerror=null;this.src='/assets/images/company-logos/1.png';" src="<?= $provider['logo'];?>">
+    <h6 class="card-title mb-0"> {{ $provider['name'] ?? $provider->name }} </h6>
+    <img style="width: 60px; height: 30px; object-fit: contain;" onerror="this.onerror=null;this.src='/assets/images/company-logos/1.png';" src="{{ $provider['logo'] ?? $provider->logo }}">
   </div>
   <div class="card-body">
     <ul class="nav nav-tabs tab-style-1 d-sm-flex d-block" role="tablist">
@@ -25,17 +21,17 @@ $providerSlabs = $providerSlabModel->where('provider_id', $provider['id'])->get(
 
       
       <div class="tab-pane px-0 border-0 show active" id="settings" role="tabpanel">
-          <form action="/api/admin/providers/update/<?= $provider['id'] ?>" novalidate method="POST">
+          <form action="/api/admin/providers/update/{{ $provider['id'] ?? $provider->id }}" novalidate method="POST">
               <div class="row">
                  <div class="col-lg-4 mb-2">
                    <label class="mb-1">Provider Name <span class="text-primary">*</span></label>
-                   <input class="form-control" name="name" placeholder="Enter Provider Name" value="<?= $provider['name']?>" required>
+                   <input class="form-control" name="name" placeholder="Enter Provider Name" value="{{ $provider['name'] ?? $provider->name }}" required>
                    <div class="invalid-feedback"></div>
                  </div>  
                  
                  <div class="col-lg-4 mb-2">
                    <label class="mb-1">Gateway Name <span class="text-primary">*</span></label>
-                   <input class="form-control" name="gateway" placeholder="Enter Gateway Name" value="<?= $provider['gateway']?>" required>
+                   <input class="form-control" name="gateway" placeholder="Enter Gateway Name" value="{{ $provider['gateway'] ?? $provider->gateway }}" required>
                    <div class="invalid-feedback"></div>
                  </div>
                  
@@ -46,7 +42,7 @@ $providerSlabs = $providerSlabModel->where('provider_id', $provider['id'])->get(
                  
                   <div class="col-lg-4 mb-2">
                    <label class="mb-1">Daily Limit <span class="text-primary">*</span></label>
-                   <input class="form-control" type="number" validation="amount" name="daily_limit" placeholder="Enter Daily Limit" value="<?= $provider['daily_limit']?>" required>
+                   <input class="form-control" type="number" validation="amount" name="daily_limit" placeholder="Enter Daily Limit" value="{{ $provider['daily_limit'] ?? $provider->daily_limit }}" required>
                    <div class="invalid-feedback"></div>
                  </div>  
                  
@@ -76,8 +72,8 @@ function handleFile(input) {
       </div>
 
       <div class="tab-pane px-0 border-0" id="slabs" role="tabpanel">
-          <form action="/api/admin/update-provider-slab" method="POST">
-             <input type="hidden" name="provider_id" value="<?= $provider['id']; ?>">
+          <form action="{{ route('admin.provider-slabs.update') }}" method="POST">
+             <input type="hidden" name="provider_id" value="{{ $provider['id'] ?? $provider->id }}">
              <div class="table-responsive">
                 <table class="table w-100">
                     <thead class="table-primary">
@@ -90,31 +86,31 @@ function handleFile(input) {
                     </tr>
                     </thead>
                     <tbody>
-                    <?php for($i = 1; $i < 7; $i ++) : ?>
+                    @for ($i = 1; $i < 7; $i++)
                     <tr>
                         <td>
-                             <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($providerSlabs[$i-1])){ echo $providerSlabs[$i-1]['min_amount']; } ?>" placeholder="Min Amount" name="min_amount_<?= $i; ?>">
+                             <input type="number" class="form-control text-center" step="0.01" value="{{ $providerSlabs[$i-1]['min_amount'] ?? $providerSlabs[$i-1]->min_amount ?? '' }}" placeholder="Min Amount" name="min_amount_{{ $i }}">
                         </td>
                          <td>
-                            <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($providerSlabs[$i-1])){ echo $providerSlabs[$i-1]['max_amount']; } ?>" placeholder="Max Amount" name="max_amount_<?= $i; ?>">
+                            <input type="number" class="form-control text-center" step="0.01" value="{{ $providerSlabs[$i-1]['max_amount'] ?? $providerSlabs[$i-1]->max_amount ?? '' }}" placeholder="Max Amount" name="max_amount_{{ $i }}">
                         </td>
                          <td>
-                            <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($providerSlabs[$i-1])){ echo $providerSlabs[$i-1]['amount']; } ?>" placeholder="Charge Amount" name="charge_amount_<?= $i; ?>">
+                            <input type="number" class="form-control text-center" step="0.01" value="{{ $providerSlabs[$i-1]['amount'] ?? $providerSlabs[$i-1]->amount ?? '' }}" placeholder="Charge Amount" name="charge_amount_{{ $i }}">
                         </td>
                          <td class="text-center">
                             <div class="custom-toggle-switch toggle-sm d-inline-block">
-                              <input id="payin-slab-percent-<?= $i; ?>" type="checkbox" value="percent" name="percent_<?= $i; ?>" <?php if(isset($providerSlabs[$i-1])){ echo $providerSlabs[$i-1]['percent'] == 1 ? "checked" : ""; } ?>>
-                              <label for="payin-slab-percent-<?= $i; ?>" class="label-primary"></label>
+                              <input id="payin-slab-percent-{{ $i }}" type="checkbox" value="percent" name="percent_{{ $i }}" {{ isset($providerSlabs[$i-1]) && ($providerSlabs[$i-1]['percent'] ?? $providerSlabs[$i-1]->percent) == 1 ? 'checked' : '' }}>
+                              <label for="payin-slab-percent-{{ $i }}" class="label-primary"></label>
                             </div>
                         </td>
                          <td class="text-center">
                             <div class="custom-toggle-switch toggle-sm d-inline-block">
-                              <input id="payin-slab-gst-<?= $i; ?>" type="checkbox" value="gst" name="gst_<?= $i; ?>" <?php if(isset($providerSlabs[$i-1])){ echo $providerSlabs[$i-1]['gst'] == 1 ? "checked" : ""; } ?>>
-                              <label for="payin-slab-gst-<?= $i; ?>" class="label-primary"></label>
+                              <input id="payin-slab-gst-{{ $i }}" type="checkbox" value="gst" name="gst_{{ $i }}" {{ isset($providerSlabs[$i-1]) && ($providerSlabs[$i-1]['gst'] ?? $providerSlabs[$i-1]->gst) == 1 ? 'checked' : '' }}>
+                              <label for="payin-slab-gst-{{ $i }}" class="label-primary"></label>
                             </div>
                         </td>
                     </tr>
-                    <?php endfor; ?>
+                    @endfor
                     </tbody>
                 </table>
              </div>

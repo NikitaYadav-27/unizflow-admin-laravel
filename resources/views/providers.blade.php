@@ -1,7 +1,6 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = $type."_providers";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => $type . '_providers'])
+@endif
 
 <div class="d-flex justify-content-between align-items-center my-4 flex-wrap gap-2">
     <nav aria-label="breadcrumb">
@@ -9,35 +8,35 @@
             <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
             <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-building-bank me-1 fs-15"></i>Providers</a></li>
             <li class="breadcrumb-item active" aria-current="page">
-                <?php if($type == "payin") : ?>
+                @if ($type == "payin")
                   <i class="ti ti-arrow-down-left me-1 fs-15"></i> Payin Providers
-                <?php elseif($type == "payout") : ?>
+                @elseif ($type == "payout")
                   <i class="ti ti-arrow-up-right me-1 fs-15"></i> Payout Providers
-                <?php elseif($type == "qr") : ?>
+                @elseif ($type == "qr")
                   <i class="ti ti-qrcode me-1 fs-15"></i> QR Providers
-                <?php endif; ?>
+                @endif
             </li>
         </ol>
     </nav>
     <div>
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addProviderModal">
-            <i class="ti ti-plus me-1"></i> Add <?= ucfirst($type); ?> Provider
+            <i class="ti ti-plus me-1"></i> Add {{ ucfirst($type) }} Provider
         </button>
     </div>
 </div>
 
-<?php echo view("providers/".$type); ?>
+@include("providers." . $type)
 
 <div class="modal fade" id="addProviderModal" tabindex="-1" aria-labelledby="addProviderModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
-        <h6 class="modal-title" id="addProviderModalLabel">Add New <?= ucfirst($type); ?> Provider</h6>
+        <h6 class="modal-title" id="addProviderModalLabel">Add New {{ ucfirst($type) }} Provider</h6>
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
-      <form action="/api/admin/providers/create" method="POST" novalidate>
+      <form action="{{ route('admin.providers.store') }}" method="POST" novalidate>
         <div class="modal-body">
-            <input type="hidden" name="type" value="<?= $type; ?>">
+            <input type="hidden" name="type" value="{{ $type }}">
             <input type="hidden" name="logo" id="new_provider_logo">
 
             <div class="mb-3">
@@ -108,6 +107,6 @@ function onRequestError(error){
 }
 </script>
 
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

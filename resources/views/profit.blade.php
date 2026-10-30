@@ -1,7 +1,6 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "profit";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'profit'])
+@endif
 
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 my-4">
     <nav aria-label="breadcrumb">
@@ -17,7 +16,6 @@
     </div>
 </div>
 
-<!-- Summary Metrics Cards -->
 <div class="row mb-3 g-3">
     <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
         <div class="card custom-card border-0 shadow-sm h-100 mb-0" style="background: linear-gradient(135deg, rgba(32, 143, 132, 0.08) 0%, rgba(32, 143, 132, 0.02) 100%);">
@@ -91,10 +89,9 @@
     </div>
 </div>
 
-<!-- Filter Bar & Table Card -->
 <div class="card custom-card">
     <div class="card-body">
-        <!-- Responsive Grid Filters -->
+        
         <div class="row g-3 mb-4">
             <div class="col-xxl-2 col-xl-2 col-lg-3 col-md-4 col-sm-6">
                 <label class="form-label fs-12 fw-semibold text-muted mb-1">Rows per page</label>
@@ -127,9 +124,9 @@
                 <label class="form-label fs-12 fw-semibold text-muted mb-1">Provider</label>
                 <select onchange="changeProvider(this.value);" class="form-select form-select-sm" id="providerFilter">
                     <option value="">All Providers</option>
-                    <?php foreach($providers as $p) : ?>
-                        <option value="<?= $p->id; ?>"><?= htmlspecialchars($p->name); ?> (<?= strtoupper($p->type); ?>)</option>
-                    <?php endforeach; ?>
+                    @foreach ($providers as $p)
+                        <option value="{{ $p->id }}">{{ $p->name }} ({{ strtoupper($p->type) }})</option>
+                    @endforeach
                 </select>
             </div>
 
@@ -137,9 +134,9 @@
                 <label class="form-label fs-12 fw-semibold text-muted mb-1">Partner / Merchant</label>
                 <select onchange="changeUser(this.value);" class="form-select form-select-sm" id="userFilter">
                     <option value="">All Partners</option>
-                    <?php foreach($users as $u) : ?>
-                        <option value="<?= $u->id; ?>"><?= htmlspecialchars($u->name); ?></option>
-                    <?php endforeach; ?>
+                    @foreach ($users as $u)
+                        <option value="{{ $u->id }}">{{ $u->name }}</option>
+                    @endforeach
                 </select>
             </div>
 
@@ -238,7 +235,7 @@
                 { className: "text-center", targets: [0, 9] }
             ],
             ajax: {
-                url: "/api/tables/profit",
+                url: "{{ route('api.tables.profit') }}",
                 type: "GET",
                 data: function (d) {
                     d.startDate = window.startDate;
@@ -314,6 +311,6 @@
     getProfitReport();
 </script>
 
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

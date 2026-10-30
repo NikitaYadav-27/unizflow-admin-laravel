@@ -1,23 +1,21 @@
 
 </div>
         </div>
-        <!-- End::app-content -->
+        
 
-
-        <!-- Footer Start -->
+        
         <footer class="footer mt-auto py-3 bg-white text-center">
             <div class="container">
-                <span class="text-muted"> Copyright © <span id="year"><?php echo date("Y");?></span> <a href="javascript:void(0);" class="text-dark fw-semibold"><?= env("app.title"); ?></a>.
+                <span class="text-muted"> Copyright © <span id="year">{{ date('Y') }}</span> <a href="javascript:void(0);" class="text-dark fw-semibold">{{ env('app.title') }}</a>.
                     </a> All
                     rights
                     reserved
                 </span>
             </div>
         </footer>
-        <!-- Footer End -->
+        
 
     </div>
-
 
     
 <style>
@@ -28,7 +26,6 @@
     .page{
        justify-content: start !important; 
     }
-
 
 .myloader {
   width: 60px;
@@ -49,16 +46,14 @@
 }
 </style>
     
-    <!-- Scroll To Top -->
+    
     <div class="scrollToTop">
         <span class="arrow"><i class="ri-arrow-up-s-fill fs-20"></i></span>
     </div>
     <div id="responsive-overlay"></div>
-    <!-- Scroll To Top -->
+    
 
-
-
-    <?php echo view('includes/js', get_defined_vars()); ?>
+    @include('includes.js')
     
 
 <script src="/assets/js/defaultmenu.min.js?v=2564"></script>   

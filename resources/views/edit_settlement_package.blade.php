@@ -1,13 +1,12 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "settlement_packages";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'settlement_packages'])
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
-        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('/admin/dashboard')"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
-        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('/admin/settlement-packages')"><i class="ti ti-receipt me-1 fs-15"></i>Settlements</a></li>
-        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('/admin/settlement-packages')"><i class="ti ti-box me-1 fs-15"></i>Settlement Packages</a></li>
+        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('{{ route('admin.dashboard') }}')"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
+        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('{{ route('admin.settlement-packages.index') }}')"><i class="ti ti-receipt me-1 fs-15"></i>Settlements</a></li>
+        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('{{ route('admin.settlement-packages.index') }}')"><i class="ti ti-box me-1 fs-15"></i>Settlement Packages</a></li>
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-edit me-1 fs-15"></i>Edit Settlement Package</li>
     </ol>
 </nav>
@@ -17,20 +16,20 @@
         <div class="card custom-card">
             <div class="card-header justify-content-between align-items-center">
                 <div class="card-title">
-                    <i class="ti ti-edit me-2 text-primary fs-18"></i>Edit Settlement Package: <?= htmlspecialchars($package->name) ?>
+                    <i class="ti ti-edit me-2 text-primary fs-18"></i>Edit Settlement Package: {{ $package->name }}
                 </div>
-                <button onclick="navigate('/admin/settlement-packages')" class="btn btn-outline-secondary btn-sm">
+                <button onclick="navigate('{{ route('admin.settlement-packages.index') }}')" class="btn btn-outline-secondary btn-sm">
                     <i class="ti ti-arrow-left me-1"></i>Back to List
                 </button>
             </div>
             <div class="card-body">
                 <form id="editSettlementPackageForm" onsubmit="event.preventDefault(); submitEditPackageForm();">
-                    <input type="hidden" id="packageId" value="<?= htmlspecialchars($package_id) ?>">
+                    <input type="hidden" id="packageId" value="{{ $package_id }}">
 
                     <div class="row mb-4">
                         <div class="col-md-7">
                             <label class="form-label fw-semibold">Package Name <span class="text-danger">*</span></label>
-                            <input type="text" id="packageName" class="form-control" value="<?= htmlspecialchars($package->name) ?>" required>
+                            <input type="text" id="packageName" class="form-control" value="{{ $package->name }}" required>
                         </div>
                         <div class="col-md-5">
                             <label class="form-label fw-semibold">Settlement Frequency</label>
@@ -56,11 +55,11 @@
                     </div>
 
                     <div id="slotsContainer" class="d-flex flex-column gap-3 mb-4">
-                        <!-- Dynamic slot rows populated by JavaScript -->
+                        
                     </div>
 
                     <div class="d-flex justify-content-end gap-2 pt-3 border-top">
-                        <button type="button" onclick="navigate('/admin/settlement-packages')" class="btn btn-light">
+                        <button type="button" onclick="navigate('{{ route('admin.settlement-packages.index') }}')" class="btn btn-light">
                             Cancel
                         </button>
                         <button type="submit" id="submitBtn" class="btn btn-primary">
@@ -118,14 +117,14 @@
 </template>
 
 <script>
-    // Initial slots from backend
-    const initialSlots = <?= json_encode($package->slots->map(function($s) {
+
+    const initialSlots = @json($package->slots->map(function($s) {
         return [
             'settlementTime' => $s->settlement_time,
             'txnFrom' => $s->txn_from_time,
             'txnTo' => $s->txn_to_time
         ];
-    })) ?>;
+    }));
 
     const defaultPresets = {
         1: [
@@ -276,7 +275,7 @@
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Updating...';
 
         $.ajax({
-            url: '/api/admin/settlement-package/update',
+            url: '{{ route('admin.settlement-packages.update') }}',
             type: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
@@ -288,7 +287,7 @@
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = origText;
                 notify("success", res.message || "Settlement Package updated successfully", () => {
-                    navigate('/admin/settlement-packages');
+                    navigate('{{ route('admin.settlement-packages.index') }}');
                 });
             },
             error: function (xhr) {
@@ -300,7 +299,6 @@
         });
     }
 
-    // Render with existing slots
     if (initialSlots && initialSlots.length > 0) {
         renderSlots(initialSlots);
         if ([1, 2, 3, 4].includes(initialSlots.length)) {
@@ -314,6 +312,6 @@
     }
 </script>
 
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

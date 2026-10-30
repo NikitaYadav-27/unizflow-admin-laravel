@@ -8,151 +8,147 @@ use App\Http\Controllers\Tables;
 // use App\Http\Controllers\AutoCommission;
 // use App\Http\Controllers\Checker;
 
-Route::get('/', [Home::class, 'index']);
-Route::get('/admin/login', [Auth::class, 'login']);
-Route::get('/admin/register', [Auth::class, 'register']);
-Route::get('/admin/dashboard', [Home::class, 'dashboard']);
-Route::post('/api/admin/login', [Auth::class, 'login_admin']);
-Route::get('/admin/login-verification', [Auth::class, 'verify_login']);
-Route::post('/api/admin/login/verification', [Auth::class, 'verify_login_otp']);
-Route::get('/admin/logout', [Auth::class, 'logout']);
-Route::get('/auth/login/token', [Auth::class, 'ad_login']);
+Route::get('/', [Home::class, 'index'])->name('home');
+Route::get('/admin/login', [Auth::class, 'login'])->name('admin.login');
+Route::get('/admin/register', [Auth::class, 'register'])->name('admin.register');
+Route::get('/admin/dashboard', [Home::class, 'dashboard'])->name('admin.dashboard');
+Route::post('/api/admin/login', [Auth::class, 'login_admin'])->name('admin.auth.login');
+Route::get('/admin/login-verification', [Auth::class, 'verify_login'])->name('admin.login.verification');
+Route::post('/api/admin/login/verification', [Auth::class, 'verify_login_otp'])->name('admin.auth.login.verification');
+Route::get('/admin/logout', [Auth::class, 'logout'])->name('admin.logout');
+Route::get('/auth/login/token', [Auth::class, 'ad_login'])->name('admin.auth.login.token');
 
-Route::get('/admin/packages/add', [Home::class, 'add_package']);
-Route::get('/admin/packages', [Home::class, 'packages']);
-Route::get('/admin/package/slabs/{id}', [Home::class, 'package_slabs']);
-Route::get('/admin/package/edit/{id}', [Home::class, 'edit_package']);
-Route::post('/api/admin/update_package_slab', [Home::class, 'update_package_slab']);
-Route::post('/api/admin/package/update', [Home::class, 'update_package']);
+Route::get('/admin/packages/add', [Home::class, 'add_package'])->name('admin.packages.add');
+Route::get('/admin/packages', [Home::class, 'packages'])->name('admin.packages.index');
+Route::get('/admin/package/slabs/{id}', [Home::class, 'package_slabs'])->name('admin.package.slabs');
+Route::get('/admin/package/edit/{id}', [Home::class, 'edit_package'])->name('admin.package.edit');
+Route::post('/api/admin/update_package_slab', [Home::class, 'update_package_slab'])->name('admin.package.slabs.update');
+Route::post('/api/admin/package/update', [Home::class, 'update_package'])->name('admin.package.update');
 
-Route::get('/admin/wallet', [Home::class, 'wallet']);
-Route::get('/admin/staff/add', [Home::class, 'add_staff']);
+Route::get('/admin/wallet', [Home::class, 'wallet'])->name('admin.wallet');
+Route::get('/admin/staff/add', [Home::class, 'add_staff'])->name('admin.staff.add');
 
-Route::get('/api/tables/wallet', [Tables::class, 'wallet']);
+Route::get('/api/tables/wallet', [Tables::class, 'wallet'])->name('api.tables.wallet');
 
-Route::get('/api/admin/dashboard/fetch-data', [Home::class, 'fetch_dashboard_data']);
-Route::post('/api/admin/update-provider-slab', [Home::class, 'update_provider_slab']);
+Route::get('/api/admin/dashboard/fetch-data', [Home::class, 'fetch_dashboard_data'])->name('api.admin.dashboard.fetch-data');
+Route::post('/api/admin/update-provider-slab', [Home::class, 'update_provider_slab'])->name('admin.provider-slabs.update');
 
-Route::post('/api/admin/package/add', [Home::class, 'create_package']);
-Route::get('/api/tables/packages', [Tables::class, 'packages']);
+Route::post('/api/admin/package/add', [Home::class, 'create_package'])->name('admin.packages.store');
+Route::get('/api/tables/packages', [Tables::class, 'packages'])->name('api.tables.packages');
 
-Route::post('/api/admin/get-bill-data', [Home::class, 'get_bill_data']);
+Route::post('/api/admin/get-bill-data', [Home::class, 'get_bill_data'])->name('api.admin.bill-data');
 
-Route::get('/admin/users/{status}', [Home::class, 'users']);
-Route::get('/admin/user/{id}', [Home::class, 'user']);
-Route::post('/api/admin/update-user', [Home::class, 'update_user']);
-Route::get('/api/tables/users', [Tables::class, 'users']);
-Route::post('/api/users/update-switch', [Home::class, 'update_user_switch']);
+Route::get('/admin/users/{status}', [Home::class, 'users'])->name('admin.users.index');
+Route::get('/admin/user/{id}', [Home::class, 'user'])->name('admin.user.show');
+Route::post('/api/admin/update-user', [Home::class, 'update_user'])->name('admin.users.update');
+Route::get('/api/tables/users', [Tables::class, 'users'])->name('api.tables.users');
+Route::post('/api/users/update-switch', [Home::class, 'update_user_switch'])->name('admin.users.switch');
 
-Route::post('/api/admin/update-bank-users', [Home::class, 'update_bank_users']);
+Route::post('/api/admin/update-bank-users', [Home::class, 'update_bank_users'])->name('admin.bank-users.update');
 
-Route::post('/api/banks/update-switch', [Home::class, 'update_bank_switch']);
-Route::get('/admin/bank-users/{id}', [Home::class, 'bank_users']);
+Route::post('/api/banks/update-switch', [Home::class, 'update_bank_switch'])->name('admin.banks.switch');
+Route::get('/admin/bank-users/{id}', [Home::class, 'bank_users'])->name('admin.bank-users.show');
 
-Route::get('/admin/providers/{type}', [Home::class, 'providers']);
-Route::get('/admin/provider-slabs', [Home::class, 'provider_slabs']);
+Route::get('/admin/providers/{type}', [Home::class, 'providers'])->name('admin.providers.index');
+Route::get('/admin/provider-slabs', [Home::class, 'provider_slabs'])->name('admin.provider-slabs.index');
 
 // Route::get('/demo', [Demo::class, 'index']);
 
-Route::post('/api/admin/create-static-qr', [Home::class, 'create_static_qr']);
-Route::post('/api/admin/update-qr-user', [Home::class, 'update_qr_user']);
+Route::post('/api/admin/create-static-qr', [Home::class, 'create_static_qr'])->name('admin.qr.create-static');
+Route::post('/api/admin/update-qr-user', [Home::class, 'update_qr_user'])->name('admin.qr.update-user');
 
-Route::post('/api/admin/user/bulk-action', [Home::class, 'users_bulk_action']);
+Route::post('/api/admin/user/bulk-action', [Home::class, 'users_bulk_action'])->name('admin.users.bulk-action');
 
-Route::get('/admin/fund-request-banks', [Home::class, 'fund_request_banks']);
+Route::get('/admin/fund-request-banks', [Home::class, 'fund_request_banks'])->name('admin.fund-request-banks.index');
 
-Route::get('/admin/chargebacks', [Home::class, 'chargebacks']);
-Route::get('/admin/cyber-complaints', [Home::class, 'cyber_complaints']);
+Route::get('/admin/chargebacks', [Home::class, 'chargebacks'])->name('admin.chargebacks.index');
+Route::get('/admin/cyber-complaints', [Home::class, 'cyber_complaints'])->name('admin.cyber-complaints.index');
 
-Route::get('/admin/chargebacks/add', [Home::class, 'add_chargeback']);
-Route::post('/api/admin/add_chargeback', [Home::class, 'create_chargeback']);
-Route::get('/api/tables/chargebacks', [Tables::class, 'chargebacks']);
-Route::get('/api/tables/transactions', [Tables::class, 'transactions']);
+Route::get('/admin/chargebacks/add', [Home::class, 'add_chargeback'])->name('admin.chargebacks.add');
+Route::post('/api/admin/add_chargeback', [Home::class, 'create_chargeback'])->name('admin.chargebacks.store');
+Route::get('/api/tables/chargebacks', [Tables::class, 'chargebacks'])->name('api.tables.chargebacks');
+Route::get('/api/tables/transactions', [Tables::class, 'transactions'])->name('api.tables.transactions');
 
-Route::get('/admin/cyber-complaints/add', [Home::class, 'add_cyber']);
-Route::post('/api/admin/add_cyber', [Home::class, 'create_cyber']);
-Route::get('/api/tables/cybers', [Tables::class, 'cybers']);
-Route::post('/api/admin/login/user', [Home::class, 'login_user']);
+Route::get('/admin/cyber-complaints/add', [Home::class, 'add_cyber'])->name('admin.cyber-complaints.add');
+Route::post('/api/admin/add_cyber', [Home::class, 'create_cyber'])->name('admin.cyber-complaints.store');
+Route::get('/api/tables/cybers', [Tables::class, 'cybers'])->name('api.tables.cybers');
+Route::post('/api/admin/login/user', [Home::class, 'login_user'])->name('admin.login.user');
 
-Route::get('/admin/transactions/{type}', [Home::class, 'transactions']);
+Route::get('/admin/transactions/{type}', [Home::class, 'transactions'])->name('admin.transactions.index');
 
+Route::get('/admin/settlements/{status}', [Home::class, 'settlements'])->name('admin.settlements.index');
+Route::get('/admin/settlement-packages', [Home::class, 'settlement_packages'])->name('admin.settlement-packages.index');
+Route::get('/admin/settlement-packages/add', [Home::class, 'add_settlement_package'])->name('admin.settlement-packages.add');
+Route::get('/admin/settlement-package/edit/{id}', [Home::class, 'edit_settlement_package'])->name('admin.settlement-packages.edit');
+Route::get('/api/tables/settlement-packages', [Tables::class, 'settlement_packages'])->name('api.tables.settlement-packages');
+Route::post('/api/admin/settlement-package/create', [Home::class, 'create_settlement_package'])->name('admin.settlement-packages.store');
+Route::post('/api/admin/settlement-package/update', [Home::class, 'update_settlement_package'])->name('admin.settlement-packages.update');
+Route::post('/api/admin/settlement-package/delete', [Home::class, 'delete_settlement_package'])->name('admin.settlement-packages.delete');
 
-Route::get('/admin/settlements/{status}', [Home::class, 'settlements']);
+Route::get('/api/tables/settlements', [Tables::class, 'settlements'])->name('api.tables.settlements');
+Route::post('/api/admin/settlement/settle-to-wallet', [Home::class, 'settle_to_wallet'])->name('admin.settlement.settle-to-wallet');
+Route::post('/api/admin/settlements/trigger-auto', [Home::class, 'trigger_auto_settlements'])->name('admin.settlements.trigger-auto');
+Route::post('/api/admin/settlement/preview-manual', [Home::class, 'preview_manual_settlement'])->name('admin.settlement.preview-manual');
+Route::post('/api/admin/settlement/create-manual', [Home::class, 'create_manual_settlement'])->name('admin.settlement.create-manual');
 
-Route::get('/admin/settlement-packages', [Home::class, 'settlement_packages']);
-Route::get('/admin/settlement-packages/add', [Home::class, 'add_settlement_package']);
-Route::get('/admin/settlement-package/edit/{id}', [Home::class, 'edit_settlement_package']);
-Route::get('/api/tables/settlement-packages', [Tables::class, 'settlement_packages']);
-Route::post('/api/admin/settlement-package/create', [Home::class, 'create_settlement_package']);
-Route::post('/api/admin/settlement-package/update', [Home::class, 'update_settlement_package']);
-Route::post('/api/admin/settlement-package/delete', [Home::class, 'delete_settlement_package']);
+Route::get('/admin/settlements-batch/{id}', [Home::class, 'settlements_batch'])->name('admin.settlements.batch');
+Route::get('/api/tables/payin_transactions', [Tables::class, 'payin_transactions'])->name('api.tables.payin_transactions');
 
-Route::get('/api/tables/settlements', [Tables::class, 'settlements']);
-Route::post('/api/admin/settlement/settle-to-wallet', [Home::class, 'settle_to_wallet']);
-Route::post('/api/admin/settlements/trigger-auto', [Home::class, 'trigger_auto_settlements']);
-Route::post('/api/admin/settlement/preview-manual', [Home::class, 'preview_manual_settlement']);
-Route::post('/api/admin/settlement/create-manual', [Home::class, 'create_manual_settlement']);
+Route::get('/export-transactions', [Tables::class, 'export_transactions'])->name('export.transactions');
+Route::get('/admin/profit', [Home::class, 'profit'])->name('admin.profit');
+Route::get('/api/tables/profit', [Tables::class, 'profit'])->name('api.tables.profit');
+Route::get('/export-profit', [Tables::class, 'export_profit'])->name('export.profit');
 
-Route::get('/admin/settlements-batch/{id}', [Home::class, 'settlements_batch']);
-Route::get('/api/tables/payin_transactions', [Tables::class, 'payin_transactions']);
+Route::get('/admin/fund-request-banks/add', [Home::class, 'add_bank'])->name('admin.fund-request-banks.add');
+Route::post('/api/admin/banks/add', [Home::class, 'create_bank'])->name('admin.banks.store');
 
-Route::get('/export-transactions', [Tables::class, 'export_transactions']);
-Route::get('/admin/profit', [Home::class, 'profit']);
-Route::get('/api/tables/profit', [Tables::class, 'profit']);
-Route::get('/export-profit', [Tables::class, 'export_profit']);
+Route::get('/admin/fund-requests/{status}', [Home::class, 'fund_requests'])->name('admin.fund-requests.index');
+Route::get('/api/tables/fund-requests', [Tables::class, 'fund_requests'])->name('api.tables.fund-requests');
+Route::post('/api/admin/fund-requests/update', [Home::class, 'update_fund_request'])->name('admin.fund-requests.update');
 
-Route::get('/admin/fund-request-banks/add', [Home::class, 'add_bank']);
-Route::post('/api/admin/banks/add', [Home::class, 'create_bank']);
+Route::get('/admin/credits/add', [Home::class, 'add_credit'])->name('admin.credits.add');
+Route::get('/admin/credits/pending', [Home::class, 'pending_credits'])->name('admin.credits.pending');
+Route::get('/admin/credits/completed', [Home::class, 'completed_credits'])->name('admin.credits.completed');
+Route::get('/api/tables/credits', [Tables::class, 'credits'])->name('api.tables.credits');
+Route::post('/api/admin/credits/add', [Home::class, 'give_credits'])->name('admin.credits.store');
+Route::post('/api/admin/advance-credit/debit', [Home::class, 'debit_credits'])->name('admin.credits.debit');
 
-Route::get('/admin/fund-requests/{status}', [Home::class, 'fund_requests']);
-
-Route::get('/api/tables/fund-requests', [Tables::class, 'fund_requests']);
-
-Route::post('/api/admin/fund-requests/update', [Home::class, 'update_fund_request']);
-
-Route::get('/admin/credits/add', [Home::class, 'add_credit']);
-Route::get('/admin/credits/pending', [Home::class, 'pending_credits']);
-Route::get('/admin/credits/completed', [Home::class, 'completed_credits']);
-Route::get('/api/tables/credits', [Tables::class, 'credits']);
-Route::post('/api/admin/credits/add', [Home::class, 'give_credits']);
-Route::post('/api/admin/advance-credit/debit', [Home::class, 'debit_credits']);
-
-Route::post('/api/transaction/info', [Home::class, 'transaction_info']);
+Route::post('/api/transaction/info', [Home::class, 'transaction_info'])->name('api.transaction.info');
 
 Route::post('/api/admin/qrcodes/update-status', [Home::class, 'qr_update_status']);
 
-Route::get('/admin/accounts/payments', [Home::class, 'account_payments']);
-Route::get('/admin/accounts/holds', [Home::class, 'account_holds']);
-Route::get('/admin/accounts/journals', [Home::class, 'account_journals']);
+Route::get('/admin/accounts/payments', [Home::class, 'account_payments'])->name('admin.accounts.payments');
+Route::get('/admin/accounts/holds', [Home::class, 'account_holds'])->name('admin.accounts.holds');
+Route::get('/admin/accounts/journals', [Home::class, 'account_journals'])->name('admin.accounts.journals');
 
-Route::get('/admin/accounts', [Home::class, 'account_accounts']);
-Route::get('/admin/accounts/add', [Home::class, 'add_account']);
-Route::post('/api/admin/accounts/add', [Home::class, 'create_account']);
-Route::get('/api/tables/account_accounts', [Tables::class, 'account_accounts']);
-Route::get('/admin/accounts/edit/{id}', [Home::class, 'edit_account']);
-Route::post('/api/admin/accounts/edit/{id}', [Home::class, 'update_account']);
-Route::get('/api/tables/account_payments', [Tables::class, 'account_payments']);
-Route::get('/api/tables/account_holds', [Tables::class, 'account_holds']);
-Route::get('/api/tables/account_journals', [Tables::class, 'account_journals']);
-Route::post('/api/admin/accounts/entries/add/{id}', [Home::class, 'add_account_entry']);
-Route::get('/admin/accounts/{id}/edit/{entry_id}', [Home::class, 'edit_entries']);
-Route::post('/api/admin/accounts/{id}/update/{entry_id}', [Home::class, 'update_entries']);
-Route::get('/admin/accounts/view/{id}', [Home::class, 'view_account']);
-Route::post('/api/admin/settlement/hold-settlement', [Home::class, 'hold_settlement']);
-Route::post('/api/admin/staff/add', [Home::class, 'create_staff']);
+Route::get('/admin/accounts', [Home::class, 'account_accounts'])->name('admin.accounts.index');
+Route::get('/admin/accounts/add', [Home::class, 'add_account'])->name('admin.accounts.add');
+Route::post('/api/admin/accounts/add', [Home::class, 'create_account'])->name('admin.accounts.store');
+Route::get('/api/tables/account_accounts', [Tables::class, 'account_accounts'])->name('api.tables.account_accounts');
+Route::get('/admin/accounts/edit/{id}', [Home::class, 'edit_account'])->name('admin.accounts.edit');
+Route::post('/api/admin/accounts/edit/{id}', [Home::class, 'update_account'])->name('admin.accounts.update');
+Route::get('/api/tables/account_payments', [Tables::class, 'account_payments'])->name('api.tables.account_payments');
+Route::get('/api/tables/account_holds', [Tables::class, 'account_holds'])->name('api.tables.account_holds');
+Route::get('/api/tables/account_journals', [Tables::class, 'account_journals'])->name('api.tables.account_journals');
+Route::post('/api/admin/accounts/entries/add/{id}', [Home::class, 'add_account_entry'])->name('admin.accounts.entries.store');
+Route::get('/admin/accounts/{id}/edit/{entry_id}', [Home::class, 'edit_entries'])->name('admin.accounts.entries.edit');
+Route::post('/api/admin/accounts/{id}/update/{entry_id}', [Home::class, 'update_entries'])->name('admin.accounts.entries.update');
+Route::get('/admin/accounts/view/{id}', [Home::class, 'view_account'])->name('admin.accounts.view');
+Route::post('/api/admin/settlement/hold-settlement', [Home::class, 'hold_settlement'])->name('admin.settlement.hold-settlement');
+Route::post('/api/admin/staff/add', [Home::class, 'create_staff'])->name('admin.staff.store');
 
-Route::get('/api/admin/chargebacks/download', [Tables::class, 'export_chargebacks']);
-Route::get('/admin/staff', [Home::class, 'staffs']);
+Route::get('/api/admin/chargebacks/download', [Tables::class, 'export_chargebacks'])->name('api.admin.chargebacks.download');
+Route::get('/admin/staff', [Home::class, 'staffs'])->name('admin.staff.index');
 
-Route::get('/export-wallet-transactions', [Tables::class, 'export_wallet_transactions']);
-Route::get('/api/tables/staff', [Tables::class, 'staff']);
+Route::get('/export-wallet-transactions', [Tables::class, 'export_wallet_transactions'])->name('export.wallet-transactions');
+Route::get('/api/tables/staff', [Tables::class, 'staff'])->name('api.tables.staff');
 
-Route::post('/api/staff/update-switch', [Home::class, 'update_staff_switch']);
+Route::post('/api/staff/update-switch', [Home::class, 'update_staff_switch'])->name('admin.staff.switch');
 
-Route::post('/admin/accounts/delete', [Home::class, 'delete_account']);
-Route::get('/admin/accounts/transactions/add/{id}', [Home::class, 'add_account_transaction']);
+Route::post('/admin/accounts/delete', [Home::class, 'delete_account'])->name('admin.accounts.delete');
+Route::get('/admin/accounts/transactions/add/{id}', [Home::class, 'add_account_transaction'])->name('admin.accounts.transactions.add');
 
-Route::post('/api/admin/accounts/transactions/add', [Home::class, 'create_account_transaction']);
+Route::post('/api/admin/accounts/transactions/add', [Home::class, 'create_account_transaction'])->name('admin.accounts.transactions.store');
 
 Route::get('/api/tables/account/transactions', [Tables::class, 'account_transactions']);
 
@@ -192,10 +188,10 @@ Route::get('/admin/holdtransactions/{status}', [Home::class, 'hold_transactions'
 Route::get('/api/tables/hold_transactions', [Tables::class, 'hold_transactions']);
 Route::post('/api/admin/hold-transactions/release', [Home::class, 'release_hold_transaction']);
 
-Route::get('/admin/settlement/bank/{id}', [Home::class, 'settle_to_bank']);
+Route::get('/admin/settlement/bank/{id}', [Home::class, 'settle_to_bank'])->name('admin.settlement.bank');
 
-Route::post('/api/admin/user/profile/update-bank-status', [Home::class, 'update_user_bank_status']);
-Route::post('/api/admin/settlements/settle-to-bank', [Home::class, 'update_settlement_to_bank']);
+Route::post('/api/admin/user/profile/update-bank-status', [Home::class, 'update_user_bank_status'])->name('admin.user.profile.update-bank-status');
+Route::post('/api/admin/settlements/settle-to-bank', [Home::class, 'update_settlement_to_bank'])->name('admin.settlements.settle-to-bank');
 
 // Route::get('/api/admin/transactions/checker/{id}', [Checker::class, 'index']);
 

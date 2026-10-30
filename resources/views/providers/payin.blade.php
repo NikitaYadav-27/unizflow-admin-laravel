@@ -1,25 +1,8 @@
-<?php
- $providerModel = new \App\Models\Providers();
- $payins = $providerModel->where("type", "payin")->where("active",1)->get();
- $provider_id = count($payins) > 0 ? $payins[0]['id'] : 0;
- if(isset($_GET['tab']) && $_GET['tab'] != ""){
-     $provider_id = $_GET['tab'];
- }
- 
- if (!function_exists('getProvider')) {
-     function getProvider($payins, $id){
-          foreach($payins as $provider){
-             if($provider['id'] == $id){
-                 return $provider;
-             } 
-          }
-          return count($payins) > 0 ? $payins[0] : null;
-     }
- }
-
- $currentProvider = getProvider($payins, $provider_id);
-?>
-
+@php
+ $payins = \App\Models\Providers::where("type", "payin")->where("active", 1)->get();
+ $tabId = request()->query('tab');
+ $currentProvider = $tabId ? $payins->firstWhere('id', $tabId) : $payins->first();
+@endphp
 
 <div class="row">
   <div class="col-lg-3 mb-2" style="height: 86vh !important; overflow: scroll;">
@@ -27,25 +10,23 @@
         <i class="ti ti-plus fs-15"></i> Add Provider
       </button>
 
-      <?php foreach($payins as $provider) : ?>  
-      <div class="card mb-2 provider <?= ($currentProvider && $currentProvider['id'] == $provider['id']) ? "active" : ""?>" onclick="navigate('/admin/providers/payin?tab=<?= $provider['id']; ?>')">
+      @foreach ($payins as $provider)  
+      <div class="card mb-2 provider {{ ($currentProvider && ($currentProvider->id ?? $currentProvider['id']) == ($provider->id ?? $provider['id'])) ? 'active' : '' }}" onclick="navigate('{{ route('admin.providers.index', ['type' => 'payin']) }}?tab={{ $provider->id ?? $provider['id'] }}')">
         <div class="card-body d-flex gap-3 align-items-center">
           <div>
-            <img src="<?= $provider['logo']; ?>" onerror="this.onerror=null;this.src='/assets/images/company-logos/1.png';" style="width: 60px; height: 30px; object-fit: contain;">
+            <img src="{{ $provider->logo ?? $provider['logo'] }}" onerror="this.onerror=null;this.src='/assets/images/company-logos/1.png';" style="width: 60px; height: 30px; object-fit: contain;">
           </div>
-          <div class="title fs-14 ms-2 fw-semibold"><?= $provider['name']; ?></div>
+          <div class="title fs-14 ms-2 fw-semibold">{{ $provider->name ?? $provider['name'] }}</div>
         </div>
       </div>
-      <?php endforeach; ?>
+      @endforeach
       
  
   </div>
   <div class="col-lg-9 mb-2">
-     <?php 
-        if($currentProvider) {
-          echo view("providers/payin/solitpay", ["provider" => $currentProvider]);
-        } else {
-     ?>
+     @if ($currentProvider)
+       @include("providers.payin.solitpay", ["provider" => $currentProvider])
+     @else
         <div class="card custom-card">
           <div class="card-body text-center py-5">
             <i class="ti ti-building-bank text-muted" style="font-size: 3rem;"></i>
@@ -56,7 +37,7 @@
             </button>
           </div>
         </div>
-     <?php } ?>
+     @endif
   
   </div>
 </div>

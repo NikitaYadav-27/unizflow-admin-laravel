@@ -1,7 +1,6 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "add_package";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'add_package'])
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
@@ -11,7 +10,6 @@
     </ol>
 </nav>
 
-
 <div class="row">
     <div class="col-lg-4">
         <div class="card custom-card">
@@ -19,7 +17,7 @@
                 <h6 class="card-title"><i class="ti ti-circle-plus me-1 fs-15"></i>&nbsp;&nbsp;Add Package</h6>
             </div>
            <div class="card-body">
-               <form action="/api/admin/package/add" method="POST">
+               <form action="{{ route('admin.packages.store') }}" method="POST">
                    <div class="form-group">
                        <label class="mb-1">Package Name <span class="text-primary">*</span></label>
                        <input type="text" name="name"   class="form-control" placeholder="Enter Name">
@@ -31,10 +29,6 @@
         </div>
     </div>
 </div>
-
-
-
-
 
 <script>
 
@@ -50,8 +44,6 @@
 
 </script>
 
-
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

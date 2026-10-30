@@ -1,7 +1,6 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "wallet";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'wallet'])
+@endif
 <div class="d-flex justify-content-between align-items-center">
     
 
@@ -18,7 +17,6 @@
 
 </div>
 
-
 <div class="card">
     <div class="card-body">
         
@@ -33,7 +31,7 @@
                     <option value="50">50</option>
                     <option value="100">100</option>
                     <option value="500">500</option>
-                    <!--<option value="-1">All</option>-->
+                    
                 </select>
                 </div>
             </div>
@@ -55,9 +53,9 @@
                    <label class="mb-1">User</label>
                     <select onchange="changeUser(this.value);" class="form-select" id="user">
                     <option value="">All</option>
-                    <?php foreach((new \App\Models\User())->get() as $user) : ?>
-                       <option value="<?= $user['id']; ?>"><?= $user['name']; ?></option>
-                    <?php endforeach; ?>
+                    @foreach (\App\Models\User::all() as $user)
+                       <option value="{{ $user->id }}">{{ $user->name }}</option>
+                    @endforeach
                     </select>
                 </div>
             </div>
@@ -250,12 +248,8 @@
             </table>
         </div>
 
-
     </div>
 </div>
-
-
-
 
 <script>
    
@@ -279,12 +273,12 @@
     function getTransactions() {
         
         
-    var start = moment().subtract(6, 'days'); // 6 days ago
-    var end = moment(); // today
+    var start = moment().subtract(6, 'days');
+    var end = moment();
 
     function cb(start, end) {
         $('#reportrange span').html(start.format('MMM D, YYYY') + ' - ' + end.format('MMM D, YYYY'));
-       // renderTransactionsVolume(start, end);
+
        window.startDate = start.format("YYYY-MM-DD");
        window.endDate = end.format("YYYY-MM-DD");
        window.dataTable.DataTable().ajax.reload();
@@ -307,7 +301,7 @@
      $('#reportrange span').html(start.format('MMM D, YYYY') + ' - ' + end.format('MMM D, YYYY'));
      window.startDate = start.format("YYYY-MM-DD");
      window.endDate = end.format("YYYY-MM-DD");
-    // cb(start, end); 
+
     
     
     
@@ -379,7 +373,7 @@
 
     function changeSearchBy(value) {
         window.searchBy = value;
-        //refresh data
+
         if (window.searchValue != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -388,7 +382,7 @@
 
     function changeSearchValue(value) {
         window.searchValue = value;
-        //refresh data
+
         if (window.searchBy != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -417,8 +411,6 @@
     }
 </style>
 
-
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

@@ -1,9 +1,10 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "settings";
-    echo view('header', get_defined_vars());
-}
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'settings'])
+@endif
+
+@php
 $settingsModel = new \App\Models\Settings();
-?>
+@endphp
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
@@ -25,7 +26,7 @@ $settingsModel = new \App\Models\Settings();
                    <th><i class="ti ti-arrow-up-right"></i>&nbsp;Payin</th>
                    <td class="">
                        <div class="custom-toggle-switch toggle-sm ms-2">
-                         <input onchange="switchSetting('payin_enable',this.checked)" <?= $settingsModel->isPayinEnabled()?'checked':''?> id="payin" name="toggleswitchsize" type="checkbox">
+                         <input onchange="switchSetting('payin_enable',this.checked)" {{ $settingsModel->isPayinEnabled() ? 'checked' : '' }} id="payin" name="toggleswitchsize" type="checkbox">
                          <label for="payin" class="label-primary"></label>
                        </div>
                    </td>
@@ -34,7 +35,7 @@ $settingsModel = new \App\Models\Settings();
                    <th><i class="ti ti-arrow-down-left"></i>&nbsp;Payout</th>
                    <td class="">
                        <div class="custom-toggle-switch toggle-sm ms-2">
-                         <input onchange="switchSetting('payout_enable',this.checked)" <?= $settingsModel->isPayoutEnabled()?'checked':''?> id="payout" name="toggleswitchsize" type="checkbox">
+                         <input onchange="switchSetting('payout_enable',this.checked)" {{ $settingsModel->isPayoutEnabled() ? 'checked' : '' }} id="payout" name="toggleswitchsize" type="checkbox">
                          <label for="payout" class="label-primary"></label>
                        </div>
                    </td>
@@ -55,7 +56,7 @@ $settingsModel = new \App\Models\Settings();
                 <div class="form-group mb-2">
                     <label class="form-label fw-semibold">Default GST Rate (%)</label>
                     <div class="input-group">
-                        <input type="number" step="0.01" min="0" max="100" class="form-control" id="gst_rate_input" value="<?= htmlspecialchars(\App\Models\Settings::getGSTRate()) ?>" placeholder="18" required>
+                        <input type="number" step="0.01" min="0" max="100" class="form-control" id="gst_rate_input" value="{{ \App\Models\Settings::getGSTRate() }}" placeholder="18" required>
                         <span class="input-group-text">%</span>
                         <button type="submit" class="btn btn-primary" id="saveGstBtn">
                             <i class="ti ti-device-floppy me-1"></i> Save
@@ -68,8 +69,6 @@ $settingsModel = new \App\Models\Settings();
       </div> 
     </div>
 </div>
-
-
 
 <script>
     function switchSetting(name, value) {
@@ -110,8 +109,6 @@ $settingsModel = new \App\Models\Settings();
     }
 </script>
 
-
-
 <style>
     #dataTable_paginate {
         display: flex;
@@ -129,8 +126,6 @@ $settingsModel = new \App\Models\Settings();
     }
 </style>
 
-
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

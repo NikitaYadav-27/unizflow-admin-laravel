@@ -1,13 +1,12 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "add_settlement_package";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'add_settlement_package'])
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
-        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('/admin/dashboard')"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
-        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('/admin/settlement-packages')"><i class="ti ti-receipt me-1 fs-15"></i>Settlements</a></li>
-        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('/admin/settlement-packages')"><i class="ti ti-box me-1 fs-15"></i>Settlement Packages</a></li>
+        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('{{ route('admin.dashboard') }}')"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
+        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('{{ route('admin.settlement-packages.index') }}')"><i class="ti ti-receipt me-1 fs-15"></i>Settlements</a></li>
+        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('{{ route('admin.settlement-packages.index') }}')"><i class="ti ti-box me-1 fs-15"></i>Settlement Packages</a></li>
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-circle-plus me-1 fs-15"></i>Add Settlement Package</li>
     </ol>
 </nav>
@@ -19,13 +18,12 @@
                 <div class="card-title">
                     <i class="ti ti-circle-plus me-2 text-primary fs-18"></i>Create Settlement Package
                 </div>
-                <button onclick="navigate('/admin/settlement-packages')" class="btn btn-outline-secondary btn-sm">
+                <button onclick="navigate('{{ route('admin.settlement-packages.index') }}')" class="btn btn-outline-secondary btn-sm">
                     <i class="ti ti-arrow-left me-1"></i>Back to List
                 </button>
             </div>
             <div class="card-body">
                 <form id="createSettlementPackageForm" onsubmit="event.preventDefault(); submitPackageForm();">
-                    <!-- Package Info -->
                     <div class="row mb-4">
                         <div class="col-md-7">
                             <label class="form-label fw-semibold">Package Name <span class="text-danger">*</span></label>
@@ -58,11 +56,10 @@
                     </div>
 
                     <div id="slotsContainer" class="d-flex flex-column gap-3 mb-4">
-                        <!-- Dynamic slot rows populated by JavaScript -->
                     </div>
 
                     <div class="d-flex justify-content-end gap-2 pt-3 border-top">
-                        <button type="button" onclick="navigate('/admin/settlement-packages')" class="btn btn-light">
+                        <button type="button" onclick="navigate('{{ route('admin.settlement-packages.index') }}')" class="btn btn-light">
                             Cancel
                         </button>
                         <button type="submit" id="submitBtn" class="btn btn-primary">
@@ -170,7 +167,6 @@
         const currentCount = container.querySelectorAll('.slot-card').length;
         const template = document.getElementById('slotTemplate').innerHTML;
 
-        // Default next slot time
         let defaultTime = "12:00";
         let defaultFrom = "00:00";
         let defaultTo = "12:00";
@@ -265,7 +261,7 @@
         submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status"></span> Saving...';
 
         $.ajax({
-            url: '/api/admin/settlement-package/create',
+            url: '{{ route('admin.settlement-packages.store') }}',
             type: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
@@ -276,7 +272,7 @@
                 submitBtn.disabled = false;
                 submitBtn.innerHTML = origText;
                 notify("success", res.message || "Settlement Package created successfully", () => {
-                    navigate('/admin/settlement-packages');
+                    navigate('{{ route('admin.settlement-packages.index') }}');
                 });
             },
             error: function (xhr) {
@@ -288,10 +284,9 @@
         });
     }
 
-    // Initialize with 3 slots preset
     renderSlots(defaultPresets[3]);
 </script>
 
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

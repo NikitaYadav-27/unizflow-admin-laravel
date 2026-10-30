@@ -1,7 +1,6 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "error_logs";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'error_logs'])
+@endif
 
 <div class="d-flex justify-content-between align-items-center">
     <nav aria-label="breadcrumb" class="my-4">
@@ -53,9 +52,9 @@
                     <label class="form-label mb-1">Provider</label>
                     <select onchange="changeProvider(this.value);" class="form-select" id="provider">
                         <option value="">All Providers</option>
-                        <?php foreach($providers as $prov) : ?>
-                            <option value="<?= $prov->id ?>"><?= htmlspecialchars($prov->name) ?></option>
-                        <?php endforeach; ?>
+                        @foreach ($providers as $prov)
+                            <option value="{{ $prov->id }}">{{ $prov->name }}</option>
+                        @endforeach
                     </select>
                 </div>
             </div>
@@ -89,7 +88,6 @@
     </div>
 </div>
 
-<!-- Modal to view Log details -->
 <div class="modal fade" id="logDetailModal" tabindex="-1" aria-labelledby="logDetailModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
@@ -189,7 +187,7 @@
                 { defaultContent: "-", targets: "_all" }
             ],
             ajax: {
-                url: "/api/tables/error_logs",
+                url: "{{ route('api.tables.error_logs') }}",
                 type: "GET",
                 data: function (d) {
                     d.searchBy = window.searchBy;
@@ -270,6 +268,6 @@
     getLogs();
 </script>
 
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

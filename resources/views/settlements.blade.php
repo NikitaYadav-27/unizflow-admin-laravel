@@ -1,20 +1,19 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "settlement_". $status;
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'settlement_' . $status])
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-receipt me-1 fs-15"></i>Settlements</a>
         </li>
-        <?php if($status == "pending") :  ?>
+        @if ($status == 'pending')
            <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-history me-1 fs-15"></i>Pending</li>
-        <?php elseif($status == "hold") :  ?>
+        @elseif ($status == 'hold')
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-forbid me-1 fs-15"></i>Hold</li>
-        <?php else : ?>
+        @else
            <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-circle-check me-1 fs-15"></i>Completed</li>
-        <?php endif; ?>
+        @endif
     </ol>
 </nav>
 
@@ -30,14 +29,14 @@
                     <option selected value="50">50</option>
                     <option value="100">100</option>
                 </select>
-                <?php if($status == "pending") : ?>
+                @if ($status == 'pending')
                     <button type="button" class="btn btn-sm btn-primary-transparent text-nowrap" onclick="triggerAutoSettlement(this)" title="Process settlements for users configured with Automatic Settlement">
                         <i class="ti ti-bolt me-1"></i>Run Auto Settlement
                     </button>
                     <button type="button" class="btn btn-sm btn-success-transparent text-nowrap" data-bs-toggle="modal" data-bs-target="#createManualSettlementModal" onclick="openManualSettlementModal()" title="Create an on-demand settlement batch for any merchant">
                         <i class="ti ti-plus me-1"></i>Create Manual Settlement
                     </button>
-                <?php endif; ?>
+                @endif
             </div>
 
             <div class="d-flex flex-wrap gap-2">
@@ -54,7 +53,6 @@
                     <input type="text" onkeyup="changeSearchValue(this.value)" class="form-control" id="searchValue"
                         placeholder="Search">
                 </div>
-
 
                <div id="reportrange" class="form-control sm-w-100" style="width: min-content; white-space: nowrap;">
                  <i class="ti ti-calendar"></i>&nbsp;
@@ -81,9 +79,9 @@
                         <th scope="col">Create Time</th>
                         <th scope="col">Settled Time</th>
                         <th scope="col">Transactions</th>
-                        <?php  if($status == "pending" || $status == "hold") : ?>
+                        @if ($status == 'pending' || $status == 'hold')
                         <th scope="col">Actions</th>
-                        <?php endif; ?>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -91,7 +89,6 @@
                 </tbody>
             </table>
         </div>
-
 
     </div>
 </div>
@@ -118,26 +115,26 @@
                 <label class="form-label fw-semibold">Select Merchant <span class="text-danger">*</span></label>
                 <select class="form-select no-select2" id="manual_settle_user_id" onchange="previewManualSettlement()" style="width: 100%;">
                     <option value="">-- Choose Merchant --</option>
-                    <?php if(!empty($users)): ?>
-                        <?php 
+                    @if (!empty($users))
+                        @php
                             $manualUsers = $users->filter(fn($u) => ($u->settlement_type ?? 'manual') === 'manual');
                             $autoUsers = $users->filter(fn($u) => ($u->settlement_type ?? 'manual') === 'automatic');
-                        ?>
-                        <?php if($manualUsers->isNotEmpty()): ?>
+                        @endphp
+                        @if ($manualUsers->isNotEmpty())
                             <optgroup label="Manual Settlement Merchants">
-                                <?php foreach($manualUsers as $u): ?>
-                                    <option value="<?= $u->id ?>"><?= htmlspecialchars($u->name) ?> (<?= htmlspecialchars($u->merchant_id ?? 'ID: ' . $u->id) ?>) [Manual]</option>
-                                <?php endforeach; ?>
+                                @foreach ($manualUsers as $u)
+                                    <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->merchant_id ?? 'ID: ' . $u->id }}) [Manual]</option>
+                                @endforeach
                             </optgroup>
-                        <?php endif; ?>
-                        <?php if($autoUsers->isNotEmpty()): ?>
-                            <optgroup label=" Automatic Settlement Merchants">
-                                <?php foreach($autoUsers as $u): ?>
-                                    <option value="<?= $u->id ?>"><?= htmlspecialchars($u->name) ?> (<?= htmlspecialchars($u->merchant_id ?? 'ID: ' . $u->id) ?>) [Automatic]</option>
-                                <?php endforeach; ?>
+                        @endif
+                        @if ($autoUsers->isNotEmpty())
+                            <optgroup label="Automatic Settlement Merchants">
+                                @foreach ($autoUsers as $u)
+                                    <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->merchant_id ?? 'ID: ' . $u->id }}) [Automatic]</option>
+                                @endforeach
                             </optgroup>
-                        <?php endif; ?>
-                    <?php endif; ?>
+                        @endif
+                    @endif
                 </select>
             </div>
 
@@ -152,7 +149,7 @@
             </div>
         </div>
 
-        <!-- Preview Box -->
+        
         <div id="manual_settle_preview_box" class="card border rounded-3 p-3 bg-light mb-0" style="display:none;">
             <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                 <span class="fw-semibold text-primary"><i class="ti ti-calculator me-1"></i>Settlement Batch Preview</span>
@@ -214,11 +211,11 @@
           cancelButtonText: "Don't Settle",
         }).then((result) => {
           if (result.isConfirmed) {
-             $.post('/api/admin/settlement/settle-to-wallet',{
+             $.post('{{ route('admin.settlement.settle-to-wallet') }}',{
                  id : id 
              },(data) =>{
                 notify("success",data.message,() => {
-                    navigate('/admin/settlements/<?= $status ?>');
+                    navigate('{{ route('admin.settlements.index', ['status' => $status]) }}');
                 });
              }).fail((xhr) => {
                 notify("error",xhr.responseJSON.message);
@@ -236,11 +233,11 @@
           cancelButtonText: "Don't Hold",
         }).then((result) => {
           if (result.isConfirmed) {
-             $.post('/api/admin/settlement/hold-settlement',{
+             $.post('{{ route('admin.settlement.hold-settlement') }}',{
                  id : id 
              },(data) =>{
                 notify("success",data.message,() => {
-                    navigate('/admin/settlements/<?= $status ?>');
+                    navigate('{{ route('admin.settlements.index', ['status' => $status]) }}');
                 });
              }).fail((xhr) => {
                 notify("error",xhr.responseJSON.message);
@@ -250,7 +247,7 @@
     }
     
     function settleToBank(id) {
-      navigate('/admin/settlement/bank/'+id);  
+      navigate('{{ route('admin.settlement.bank', ['id' => '__ID__']) }}'.replace('__ID__', id));  
     }
 
     window.dataTable = null;
@@ -259,16 +256,15 @@
     window.startDate = "";
     window.endDate = "";
 
-
     function getTransactions() {
         
         
-    var start = moment().subtract(6, 'days'); // 6 days ago
-    var end = moment(); // today
+    var start = moment().subtract(6, 'days');
+    var end = moment();
 
     function cb(start, end) {
         $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
-       // renderTransactionsVolume(start, end);
+
        window.startDate = start.format("YYYY-MM-DD");
        window.endDate = end.format("YYYY-MM-DD");
        window.dataTable.DataTable().ajax.reload();
@@ -291,7 +287,7 @@
      $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
      window.startDate = start.format("YYYY-MM-DD");
      window.endDate = end.format("YYYY-MM-DD");
-    // cb(start, end); 
+
     
     
     
@@ -310,14 +306,14 @@
                     { "defaultContent": "-", "targets": "_all" }
                 ],
                 "ajax": {
-                    "url": "/api/tables/settlements",
+                    "url": "{{ route('api.tables.settlements') }}",
                     "type": "GET",
                     "data": function (d) {
                         d.searchBy = window.searchBy;
                         d.searchValue = window.searchValue;
                         d.startDate = window.startDate;
                         d.endDate = window.endDate;
-                        d.status = '<?= $status == "completed" ?"Success":$status ?>'
+                        d.status = '{{ $status == 'completed' ? 'Success' : $status }}'
                     }
                 }
             }
@@ -332,7 +328,7 @@
 
     function changeSearchBy(value) {
         window.searchBy = value;
-        //refresh data
+
         if (window.searchValue != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -341,7 +337,7 @@
 
     function changeSearchValue(value) {
         window.searchValue = value;
-        //refresh data
+
         if (window.searchBy != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -352,7 +348,7 @@
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processing...';
         $.ajax({
-            url: '/api/admin/settlements/trigger-auto',
+            url: '{{ route('admin.settlements.trigger-auto') }}',
             type: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({}),
@@ -441,7 +437,7 @@
             $('#prev_content').css('opacity', '0.5');
 
             $.ajax({
-                url: '/api/admin/settlement/preview-manual',
+                url: '{{ route('admin.settlement.preview-manual') }}',
                 type: 'POST',
                 contentType: 'application/json',
                 data: JSON.stringify({
@@ -498,7 +494,7 @@
         btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Creating Batch...');
 
         $.ajax({
-            url: '/api/admin/settlement/create-manual',
+            url: '{{ route('admin.settlement.create-manual') }}',
             type: 'POST',
             contentType: 'application/json',
             data: JSON.stringify({
@@ -547,7 +543,7 @@
         overflow-y: scroll;
     }
 
-    /* Select2 in Create Manual Settlement Modal */
+    
     #createManualSettlementModal .select2-container {
         width: 100% !important;
         display: block !important;
@@ -593,25 +589,23 @@
         outline: none !important;
     }
 
-    /* Scrollable modal without visible scrollbar */
+    
     #createManualSettlementModal .modal-dialog-scrollable .modal-body,
     #createManualSettlementModal .modal-body,
     #createManualSettlementModal .modal-content {
-        scrollbar-width: none !important; /* Firefox */
-        -ms-overflow-style: none !important; /* IE and Edge */
+        scrollbar-width: none !important; 
+        -ms-overflow-style: none !important; 
         overflow-y: auto !important;
     }
     #createManualSettlementModal .modal-dialog-scrollable .modal-body::-webkit-scrollbar,
     #createManualSettlementModal .modal-body::-webkit-scrollbar,
     #createManualSettlementModal .modal-content::-webkit-scrollbar {
-        display: none !important; /* Chrome, Safari, Edge, Opera */
+        display: none !important; 
         width: 0 !important;
         height: 0 !important;
     }
 </style>
 
-
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

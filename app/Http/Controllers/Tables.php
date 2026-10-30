@@ -1,71 +1,94 @@
 <?php
+
 namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Carbon\Carbon;
+use App\Models\Admin;
+use App\Models\User;
+use App\Models\Transaction;
+use App\Models\Wallet;
+use App\Models\Credits;
+use App\Models\HoldWallet;
+use App\Models\Package;
+use App\Models\SettlementPackage;
+use App\Models\SettlementPackageSlot;
+use App\Models\Settlement;
+use App\Models\FundRequest;
+use App\Models\FundRequestBank;
+use App\Models\Chargeback;
+use App\Models\ErrorLog;
+use App\Models\Providers;
+use App\Models\Providerslab;
+use App\Models\Settings;
 
 class Tables extends BaseController
 {
-    private $session;
-    function __construct() {
-    $this->middleware(function ($request, $next) {
-        if (!session()->get("admin_id")) {
-            return response()->json(["status" => "error", "message" => "Unauthorized access"], 401);
-        }
-        return $next($request);
-    });
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            if (!session('admin_id')) {
+                return response()->json(["status" => "error", "message" => "Unauthorized access"], 401);
+            }
+            return $next($request);
+        });
     }
 
-    public function users()
+    private function encrypt($text)
     {
-        $session = session();
-        $adminModel = new \App\Models\Admin();
-        $admin = $adminModel->find($session->get('admin_id'));
-       
+        return bin2hex(openssl_encrypt($text, 'AES-256-CBC', env("encryption.key"), OPENSSL_RAW_DATA, substr(hash('sha256', env("encryption.key")), 0, 16)));
+    }
 
-      
+    private function decrypt($encryptedText)
+    {
+        $key = env("encryption.key");
+        $iv = substr(hash('sha256', $key), 0, 16);
+        $cipherText = hex2bin($encryptedText);
+        return openssl_decrypt($cipherText, 'AES-256-CBC', $key, OPENSSL_RAW_DATA, $iv);
+    }
+
+    public function users(Request $request)
+    {
         $availableSearchKeys = ["merchant_id", "name", "email", "phone", "wallet"];
-        $request = request();
 
         $offset = (int) $request->input('start');
         $limit = (int) $request->input('length');
         $searchBy = $request->input('searchBy');
         $searchValue = $request->input('searchValue');
         $draw = (int) $request->input('draw');
-        //$active = $request->input('status') === "active" ? 1 : 0;
         $status = $request->input('status');
-        
 
-        $startTime = date("Y-m-d 00:00:00");
-        $endTime = date("Y-m-d 23:59:59");
+        $startTime = now()->startOfDay()->toDateTimeString();
+        $endTime = now()->endOfDay()->toDateTimeString();
 
-        $userModel = new \App\Models\User();
-        if($status == "active"){
-            $totalUsers = $userModel->where('active', 1)->where("locked",0)->count();
-        }elseif($status == "inactive"){
-             $totalUsers = $userModel->where('active', 0)->count();
-        }elseif($status == "locked"){
-            $totalUsers = $userModel->where('active', 1)->where("locked",1)->count();
+        $totalUsers = 0;
+        if ($status == "active") {
+            $totalUsers = User::where('active', 1)->where("locked", 0)->count();
+        } elseif ($status == "inactive") {
+            $totalUsers = User::where('active', 0)->count();
+        } elseif ($status == "locked") {
+            $totalUsers = User::where('active', 1)->where("locked", 1)->count();
         }
-        
 
-        $filteredCountBuilder = $userModel->query();
-        
-        if($status == "active"){
+        $filteredCountBuilder = User::query();
+
+        if ($status == "active") {
             $filteredCountBuilder->where('users.active', 1);
             $filteredCountBuilder->where('users.locked', 0);
-        }elseif($status == "inactive"){
+        } elseif ($status == "inactive") {
             $filteredCountBuilder->where('users.active', 0);
-        }elseif($status == "locked"){
+        } elseif ($status == "locked") {
             $filteredCountBuilder->where('users.active', 1);
             $filteredCountBuilder->where('users.locked', 1);
         }
-        
-        
-        
+
         if (!empty($searchBy) && !empty($searchValue) && in_array($searchBy, $availableSearchKeys)) {
             $filteredCountBuilder->like("users." . $searchBy, $searchValue);
         }
         $filteredUsers = $filteredCountBuilder->count();
 
-        $builder = $userModel->query();
+        $builder = User::query();
         $builder->selectRaw("
             users.*, 
             settlement_packages.name as settlement_package,
@@ -76,7 +99,7 @@ class Tables extends BaseController
         $builder->leftJoin("packages", "packages.id", "=", "users.package");
         $builder->join("settlement_packages", "settlement_packages.id", "=", "users.settlement_package");
 
-        $builder->leftJoin(\Illuminate\Support\Facades\DB::raw("( SELECT  user_id, SUM(amount) AS todays_collection 
+        $builder->leftJoin(DB::raw("( SELECT user_id, SUM(amount) AS todays_collection 
                 FROM transactions 
                 WHERE status = 'Success' 
                   AND service = 'payin' 
@@ -84,7 +107,7 @@ class Tables extends BaseController
                 GROUP BY user_id
              ) AS tx"), "tx.user_id", "=", "users.id");
 
-        $builder->leftJoin(\Illuminate\Support\Facades\DB::raw("( SELECT user_id, SUM(net_amount) AS unsettled_amount 
+        $builder->leftJoin(DB::raw("( SELECT user_id, SUM(net_amount) AS unsettled_amount 
                 FROM transactions 
                 WHERE status = 'Success' 
                   AND service = 'payin' 
@@ -92,17 +115,16 @@ class Tables extends BaseController
                 GROUP BY user_id
              ) AS unsettled_tx"), "unsettled_tx.user_id", "=", "users.id");
 
-        if($status == "active"){
+        if ($status == "active") {
             $builder->where('users.active', 1);
             $builder->where('users.locked', 0);
-        }elseif($status == "inactive"){
+        } elseif ($status == "inactive") {
             $builder->where('users.active', 0);
-        }elseif($status == "locked"){
+        } elseif ($status == "locked") {
             $builder->where('users.active', 1);
             $builder->where('users.locked', 1);
         }
-       
-        
+
         if (!empty($searchBy) && !empty($searchValue) && in_array($searchBy, $availableSearchKeys)) {
             $builder->like("users." . $searchBy, $searchValue);
         }
@@ -115,11 +137,8 @@ class Tables extends BaseController
 
         foreach ($users as $user) {
             $actions = '';
-          
-                $actions .= '<button class="btn btn-sm btn-primary-transparent" onclick="loginUser(\'' . $user->id . '\',this);"><i class="ti ti-login"></i></button>';
-            
-                $actions .= '&nbsp;<button class="btn btn-sm btn-success-transparent" onclick="navigate(\'/admin/user/' . $this->encrypt($user->id) . '\');"><i class="ti ti-list"></i></button>';
-            
+            $actions .= '<button class="btn btn-sm btn-primary-transparent" onclick="loginUser(\'' . $user->id . '\',this);"><i class="ti ti-login"></i></button>';
+            $actions .= '&nbsp;<button class="btn btn-sm btn-success-transparent" onclick="navigate(\'/admin/user/' . $this->encrypt($user->id) . '\');"><i class="ti ti-list"></i></button>';
 
             $data[] = [
                 '<input class="form-check-input user-select" onclick="selectUser(this)" data-uid="' . $user->id . '" type="checkbox">',
@@ -194,28 +213,17 @@ class Tables extends BaseController
         ], 200);
     }
 
-    private function encrypt($text)
+    public function packages(Request $request)
     {
-        return bin2hex(openssl_encrypt($text, 'AES-256-CBC', env("encryption.key"), OPENSSL_RAW_DATA, substr(hash('sha256', env("encryption.key")), 0, 16)));
-    }
-
-    public function packages()
-    {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
-    
         $availableSearchKeys = [];
-        $request = request();
-        $session = session();
         $offset = $request->input('start');
         $limit = $request->input('length');
         $searchBy = $request->input('searchBy');
         $searchValue = $request->input('searchValue');
         $draw = (int) $request->input('draw');
-        $packageModel = new \App\Models\Package();
-        $totalPackages = $packageModel->count();
-        $builder = $packageModel->query();
+
+        $totalPackages = Package::count();
+        $builder = Package::query();
 
         if (!empty($searchBy) && !empty($searchValue)) {
             if (in_array($searchBy, $availableSearchKeys)) {
@@ -225,22 +233,18 @@ class Tables extends BaseController
         $filteredBuilder = clone $builder;
         $filteredPackages = $filteredBuilder->count();
         $builder->orderBy('packages.id', "DESC")->limit($limit, $offset);
-        $query = $builder->get();
-        $packages = $query;
+        $packages = $builder->get();
         $data = [];
         $index = 1;
 
         foreach ($packages as $package) {
             $actions = '';
-            
             $actions .= '<button onclick="navigate(\'/admin/package/edit/' . $this->encrypt($package->id) . '\');" class="btn btn-sm btn-warning-transparent"><i class="ti ti-edit"></i></button>';
-            
             $actions .= ' <button onclick="navigate(\'/admin/package/slabs/' . $this->encrypt($package->id) . '\');" class="btn btn-sm btn-success-transparent"><i class="ti ti-list"></i></button>';
             $data[] = [$index, $package->name, $package->updated_at, $package->created_at, $actions];
             $index++;
         }
 
-        // Return JSON response
         return response()->json([
             'draw' => $draw,
             'recordsTotal' => $totalPackages,
@@ -249,24 +253,17 @@ class Tables extends BaseController
         ], 200);
     }
 
-    public function settlement_packages()
+    public function settlement_packages(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
+        SettlementPackage::ensureSlotsTableExists();
 
-        \App\Models\SettlementPackage::ensureSlotsTableExists();
-
-        $request = request();
         $offset = (int) $request->input('start', 0);
         $limit = (int) $request->input('length', 10);
-        $searchBy = $request->input('searchBy');
         $searchValue = $request->input('searchValue');
         $draw = (int) $request->input('draw');
 
-        $model = new \App\Models\SettlementPackage();
-        $totalPackages = $model->count();
-        $builder = $model->query()->with('slots');
+        $totalPackages = SettlementPackage::count();
+        $builder = SettlementPackage::query()->with('slots');
 
         if (!empty($searchValue)) {
             $builder->where('name', 'like', "%{$searchValue}%");
@@ -304,7 +301,7 @@ class Tables extends BaseController
                 '<strong>' . htmlspecialchars($package->name) . '</strong>',
                 $frequencyBadge,
                 $slotsHtml,
-                $package->created_at ? date('d M Y, h:i A', strtotime($package->created_at)) : 'N/A',
+                $package->created_at ? Carbon::parse($package->created_at)->format('d M Y, h:i A') : 'N/A',
                 $actions
             ];
             $index++;
@@ -318,15 +315,9 @@ class Tables extends BaseController
         ], 200);
     }
 
-    public function settlements()
+    public function settlements(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
-       
         $availableSearchKeys = ["txnid", "batch_id", "user"];
-        $request = request();
-        $session = session();
         $offset = $request->input('start');
         $limit = $request->input('length');
         $searchBy = $request->input('searchBy');
@@ -336,9 +327,8 @@ class Tables extends BaseController
         $endDate = $request->input('endDate') . " 23:59:59";
 
         $draw = (int) $request->input('draw');
-        $settlementModel = new \App\Models\Settlement();
-        $totalSettlement = $settlementModel->whereBetween('settlements.created_at', [$startDate, $endDate])->count();
-        $builder = $settlementModel->query();
+        $totalSettlement = Settlement::whereBetween('settlements.created_at', [$startDate, $endDate])->count();
+        $builder = Settlement::query();
         $builder->selectRaw("settlements.* , users.name as name");
         $builder->whereBetween('settlements.created_at', [$startDate, $endDate]);
         $builder->where("settlements.status", $status);
@@ -357,17 +347,13 @@ class Tables extends BaseController
         $filteredBuilder = clone $builder;
         $filteredSettlements = $filteredBuilder->count();
         $builder->orderBy('settlements.id', "DESC")->limit($limit, $offset);
-        $query = $builder->get();
-        $settlements = $query;
+        $settlements = $builder->get();
         $data = [];
         $index = 1;
 
         foreach ($settlements as $settlement) {
-            $totalTransactions = (new \App\Models\Transaction())
-                ->selectRaw("count(id) as total")
-                ->where('settlement_id', $settlement->id)
-                ->first()['total'];
-            $encId = bin2hex(openssl_encrypt($settlement->id, 'AES-256-CBC', env("encryption.key"), OPENSSL_RAW_DATA, substr(hash('sha256', env("encryption.key")), 0, 16)));
+            $totalTransactions = Transaction::where('settlement_id', $settlement->id)->count();
+            $encId = $this->encrypt($settlement->id);
             $actions =
                 '<div class="d-flex gap-2">
               <button onclick="settleToWallet(\'' .
@@ -381,8 +367,6 @@ class Tables extends BaseController
                 $actions .= '<button onclick="holdSettlement(\'' . $encId . '\');" class="btn btn-sm btn-danger-transparent"><i class="ti ti-forbid-2"></i></button>';
             }
             $actions .= '</div>';
-
-          
 
             $row = [
                 $index,
@@ -412,7 +396,6 @@ class Tables extends BaseController
             $index++;
         }
 
-        // Return JSON response
         return response()->json([
             'draw' => $draw,
             'recordsTotal' => $totalSettlement,
@@ -421,17 +404,9 @@ class Tables extends BaseController
         ], 200);
     }
 
-
-
-    public function fund_requests()
+    public function fund_requests(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
-       
         $availableSearchKeys = ["txnid", "rrn", "user"];
-        $request = request();
-        $session = session();
         $offset = $request->input('start');
         $limit = $request->input('length');
         $searchBy = $request->input('searchBy');
@@ -441,9 +416,8 @@ class Tables extends BaseController
         $endDate = $request->input('endDate') . " 23:59:59";
 
         $draw = (int) $request->input('draw');
-        $fundrequestModel = new \App\Models\FundRequest();
-        $totalFundrequest = $fundrequestModel->whereBetween('fund_requests.created_at', [$startDate, $endDate])->count();
-        $builder = $fundrequestModel->query();
+        $totalFundrequest = FundRequest::whereBetween('fund_requests.created_at', [$startDate, $endDate])->count();
+        $builder = FundRequest::query();
         $builder->selectRaw("fund_requests.* , users.name as name, fund_request_banks.name as bank_name");
         $builder->whereBetween('fund_requests.created_at', [$startDate, $endDate]);
         $builder->where("fund_requests.status", $status);
@@ -463,13 +437,12 @@ class Tables extends BaseController
         $filteredBuilder = clone $builder;
         $filteredFundrequests = $filteredBuilder->count();
         $builder->orderBy('fund_requests.id', "DESC")->limit($limit, $offset);
-        $query = $builder->get();
-        $fundrequests = $query;
+        $fundrequests = $builder->get();
         $data = [];
         $index = 1;
 
         foreach ($fundrequests as $fundrequest) {
-            $encId = bin2hex(openssl_encrypt($fundrequest->id, 'AES-256-CBC', env("encryption.key"), OPENSSL_RAW_DATA, substr(hash('sha256', env("encryption.key")), 0, 16)));
+            $encId = $this->encrypt($fundrequest->id);
 
             $row = [
                 $index,
@@ -499,7 +472,6 @@ class Tables extends BaseController
             $index++;
         }
 
-        // Return JSON response
         return response()->json([
             'draw' => $draw,
             'recordsTotal' => $totalFundrequest,
@@ -508,12 +480,8 @@ class Tables extends BaseController
         ], 200);
     }
 
-    public function transactions()
+    public function transactions(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
-       
         $availableSearchKeys = [
             "txnid",
             "merchant_txnid",
@@ -534,8 +502,7 @@ class Tables extends BaseController
             "qr_name",
             "settlement_txnid",
         ];
-        $request = request();
-        $session = session();
+
         $offset = $request->input('start');
         $limit = $request->input('length');
         $searchBy = $request->input('searchBy');
@@ -549,46 +516,51 @@ class Tables extends BaseController
         $user_id = $request->input('user_id');
         $provider = $request->input('provider');
 
-        $transactionModel = new \App\Models\Transaction();
+        $countQuery = Transaction::query();
 
         if ($type == "payin") {
-            $transactionModel->where('transactions.service', 'payin');
-            $transactionModel->where('qr_id', 0);
+            $countQuery->where('transactions.service', 'payin');
+            $countQuery->where('qr_id', 0);
         } elseif ($type == "payout") {
-            $transactionModel->where('transactions.service', 'payout');
+            $countQuery->where('transactions.service', 'payout');
         } elseif ($type == "qr") {
-            $transactionModel->where('transactions.service', 'payin');
-            $transactionModel->where('transactions.qr_id', '!=', 0);
+            $countQuery->where('transactions.service', 'payin');
+            $countQuery->where('transactions.qr_id', '!=', 0);
         }
 
-        $transactionModel->where('transactions.created_at', '>=', $startDate);
-        $transactionModel->where('transactions.created_at', '<=', $endDate);
+        $countQuery->where('transactions.created_at', '>=', $startDate);
+        $countQuery->where('transactions.created_at', '<=', $endDate);
 
         if ($status != "" && in_array($status, ["Success", "Pending", "Failed", "Expired"])) {
-            $transactionModel->where("transactions.status", $status);
+            $countQuery->where("transactions.status", $status);
         }
 
         if ($user_id > 0) {
-            $transactionModel->where("transactions.user_id", $user_id);
+            $countQuery->where("transactions.user_id", $user_id);
         }
 
         if ($provider > 0) {
-            $builder = $transactionModel->query();
-            $builder
-                ->where(function($q) use ($provider) { $q->orWhere('transactions.payin_provider', $provider)->orWhere('transactions.payout_provider', $provider); });
+            $countQuery->where(function($q) use ($provider) {
+                $q->orWhere('transactions.payin_provider', $provider)->orWhere('transactions.payout_provider', $provider);
+            });
         }
 
-        $totalTransactions = $transactionModel->count();
-        $builder = $transactionModel->query();
+        $totalTransactions = $countQuery->count();
+        $builder = Transaction::query();
 
         $builder->selectRaw("transactions.*, users.name as user, COALESCE(payin_provider.name, payout_provider.name) as provider_name, settlements.txnid as settlement_txn_id");
         $builder->join("users", "users.id", "=", "transactions.user_id");
 
-        $builder->leftJoin("providers as payin_provider", function($join) { $join->on("payin_provider.id", "=", "transactions.payin_provider")->where("transactions.service", "=", "payin"); });
-        $builder->leftJoin("providers as payout_provider", function($join) { $join->on("payout_provider.id", "=", "transactions.payout_provider")->where("transactions.service", "=", "payout"); });
-       
+        $builder->leftJoin("providers as payin_provider", function($join) {
+            $join->on("payin_provider.id", "=", "transactions.payin_provider")->where("transactions.service", "=", "payin");
+        });
+        $builder->leftJoin("providers as payout_provider", function($join) {
+            $join->on("payout_provider.id", "=", "transactions.payout_provider")->where("transactions.service", "=", "payout");
+        });
 
-        $builder->leftJoin("settlements", function($join) { $join->on("settlements.id", "=", "transactions.settlement_id")->where("transactions.settlement_id", "!=", 0); });
+        $builder->leftJoin("settlements", function($join) {
+            $join->on("settlements.id", "=", "transactions.settlement_id")->where("transactions.settlement_id", "!=", 0);
+        });
 
         if ($type == "payin") {
             $builder->where('transactions.service', 'payin');
@@ -612,8 +584,9 @@ class Tables extends BaseController
         }
 
         if ($provider > 0) {
-            $builder
-                ->where(function($q) use ($provider) { $q->orWhere('transactions.payin_provider', $provider)->orWhere('transactions.payout_provider', $provider); });
+            $builder->where(function($q) use ($provider) {
+                $q->orWhere('transactions.payin_provider', $provider)->orWhere('transactions.payout_provider', $provider);
+            });
         }
 
         if (!empty($searchBy) && !empty($searchValue)) {
@@ -636,55 +609,54 @@ class Tables extends BaseController
             $builder->limit($limit, $offset);
         }
 
-        $query = $builder->get();
-        $transactions = $query;
+        $transactions = $builder->get();
 
-        $extraBuiler = (new \App\Models\Transaction())->query();
-        $extraBuiler->selectRaw("count(*) as total_transactions, sum(transactions.amount) as total_amount, sum(transactions.charges) as total_charges, sum(transactions.gst) as total_gst");
-
-        
-
-        $extraBuiler->leftJoin("settlements", function($join) { $join->on("settlements.id", "=", "transactions.settlement_id")->where("transactions.settlement_id", "!=", 0); });
+        $extraBuilder = Transaction::query();
+        $extraBuilder->selectRaw("count(*) as total_transactions, sum(transactions.amount) as total_amount, sum(transactions.charges) as total_charges, sum(transactions.gst) as total_gst");
+        $extraBuilder->leftJoin("settlements", function($join) {
+            $join->on("settlements.id", "=", "transactions.settlement_id")->where("transactions.settlement_id", "!=", 0);
+        });
 
         if ($type == "payin") {
-            $extraBuiler->where('transactions.service', 'payin');
-            $extraBuiler->where('qr_id', 0);
+            $extraBuilder->where('transactions.service', 'payin');
+            $extraBuilder->where('qr_id', 0);
         } elseif ($type == "payout") {
-            $extraBuiler->where('transactions.service', 'payout');
+            $extraBuilder->where('transactions.service', 'payout');
         } elseif ($type == "qr") {
-            $extraBuiler->where('transactions.service', 'payin');
-            $extraBuiler->where('transactions.qr_id', '!=', 0);
+            $extraBuilder->where('transactions.service', 'payin');
+            $extraBuilder->where('transactions.qr_id', '!=', 0);
         }
 
-        $extraBuiler->where('transactions.created_at', '>=', $startDate);
-        $extraBuiler->where('transactions.created_at', '<=', $endDate);
+        $extraBuilder->where('transactions.created_at', '>=', $startDate);
+        $extraBuilder->where('transactions.created_at', '<=', $endDate);
 
         if ($status != "" && in_array($status, ["Success", "Pending", "Failed", "Expired"])) {
-            $extraBuiler->where("transactions.status", $status);
+            $extraBuilder->where("transactions.status", $status);
         }
 
         if ($user_id > 0) {
-            $extraBuiler->where("transactions.user_id", $user_id);
+            $extraBuilder->where("transactions.user_id", $user_id);
         }
 
         if ($provider > 0) {
-            $extraBuiler
-                ->where(function($q) use ($provider) { $q->orWhere('transactions.payin_provider', $provider)->orWhere('transactions.payout_provider', $provider); });
+            $extraBuilder->where(function($q) use ($provider) {
+                $q->orWhere('transactions.payin_provider', $provider)->orWhere('transactions.payout_provider', $provider);
+            });
         }
 
         if (!empty($searchBy) && !empty($searchValue)) {
             if (in_array($searchBy, $availableSearchKeys)) {
                 if ($searchBy == "qr_name") {
-                    $extraBuiler->where('qr_codes.name', 'like', '%' . $searchValue . '%');
+                    $extraBuilder->where('qr_codes.name', 'like', '%' . $searchValue . '%');
                 } elseif ($searchBy == "settlement_txnid") {
-                    $extraBuiler->where('settlements.txnid', 'like', '%' . $searchValue . '%');
+                    $extraBuilder->where('settlements.txnid', 'like', '%' . $searchValue . '%');
                 } else {
-                    $extraBuiler->like('transactions.' . $searchBy, $searchValue);
+                    $extraBuilder->like('transactions.' . $searchBy, $searchValue);
                 }
             }
         }
 
-        $extraData = $extraBuiler->get()[0];
+        $extraData = $extraBuilder->first();
 
         $data = [];
         $index = 1;
@@ -732,10 +704,9 @@ class Tables extends BaseController
                 $row[] = $transaction->service == "payout" ? ($transaction->processed == 1 ? "<span class='badge bg-success-transparent'>Yes</span>" : "<span class='badge bg-danger-transparent'>No</span>") : "";
             }
 
-            $row[] = str_contains(strtolower($transaction->reason), 'insufficient') ? "" : $transaction->reason;
+            $row[] = str_contains(strtolower($transaction->reason ?? ''), 'insufficient') ? "" : ($transaction->reason ?? '');
             $row[] = $transaction->remarks;
-            $row[] = $transaction->provider_name; // provider name
-           
+            $row[] = $transaction->provider_name;
 
             if (in_array($type, ['payin', 'qr', 'all'])) {
                 $row[] =
@@ -759,17 +730,16 @@ class Tables extends BaseController
             $index++;
         }
 
-        // Return JSON response
         return response()->json([
             'draw' => $draw,
             'recordsTotal' => $totalTransactions,
             'recordsFiltered' => $filteredTransactions,
             'data' => $data,
             'extra' => [
-                "total_transactions" => $extraData->total_transactions,
-                "total_amount" => "₹ " . round($extraData->total_amount, 2),
-                "total_charges" => "₹ " . round($extraData->total_charges, 2),
-                "total_gst" => "₹ " . round($extraData->total_gst, 2),
+                "total_transactions" => $extraData ? $extraData->total_transactions : 0,
+                "total_amount" => "₹ " . round($extraData ? $extraData->total_amount : 0, 2),
+                "total_charges" => "₹ " . round($extraData ? $extraData->total_charges : 0, 2),
+                "total_gst" => "₹ " . round($extraData ? $extraData->total_gst : 0, 2),
             ],
         ], 200);
     }
@@ -783,7 +753,7 @@ class Tables extends BaseController
             return '<span class="badge bg-success-transparent"><i class="ti ti-code"></i>&nbsp;API</span>';
         }
     }
-    
+
     private function getStatusSpan($status)
     {
         if ($status == "Success") {
@@ -804,29 +774,20 @@ class Tables extends BaseController
         if ($status == "Processing") {
             return '<span class="badge bg-info-transparent">Processing</span>';
         }
-
         if ($status == "Uploaded") {
             return '<span class="badge bg-primary-transparent">Uploaded</span>';
         }
-
         if ($status == "Approved") {
             return '<span class="badge bg-success-transparent">Approved</span>';
         }
-
         if ($status == "Rejected") {
             return '<span class="badge bg-danger-transparent">Rejected</span>';
         }
     }
 
-    public function export_transactions()
+    public function export_transactions(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
-       
-
-        // Set CSV filename
-        $filename = 'export_' . date('Ymd_His') . '.csv';
+        $filename = 'export_' . now()->format('Ymd_His') . '.csv';
 
         $availableSearchKeys = [
             "txnid",
@@ -848,8 +809,7 @@ class Tables extends BaseController
             "qr_name",
             "settlement_txnid",
         ];
-        $request = request();
-        $session = session();
+
         $searchBy = $request->input('searchBy');
         $searchValue = $request->input('searchValue');
         $type = $request->input('type');
@@ -859,18 +819,20 @@ class Tables extends BaseController
         $user_id = $request->input('user_id');
         $provider = $request->input('provider');
 
-        $transactionModel = new \App\Models\Transaction();
-
-        $builder = $transactionModel->query();
-
+        $builder = Transaction::query();
         $builder->selectRaw("transactions.*, users.name as user, COALESCE(payin_provider.name, payout_provider.name) as provider_name, settlements.txnid as settlement_txn_id");
         $builder->join("users", "users.id", "=", "transactions.user_id");
 
-        $builder->leftJoin("providers as payin_provider", function($join) { $join->on("payin_provider.id", "=", "transactions.payin_provider")->where("transactions.service", "=", "payin"); });
-        $builder->leftJoin("providers as payout_provider", function($join) { $join->on("payout_provider.id", "=", "transactions.payout_provider")->where("transactions.service", "=", "payout"); });
-      
+        $builder->leftJoin("providers as payin_provider", function($join) {
+            $join->on("payin_provider.id", "=", "transactions.payin_provider")->where("transactions.service", "=", "payin");
+        });
+        $builder->leftJoin("providers as payout_provider", function($join) {
+            $join->on("payout_provider.id", "=", "transactions.payout_provider")->where("transactions.service", "=", "payout");
+        });
 
-        $builder->leftJoin("settlements", function($join) { $join->on("settlements.id", "=", "transactions.settlement_id")->where("transactions.settlement_id", "!=", 0); });
+        $builder->leftJoin("settlements", function($join) {
+            $join->on("settlements.id", "=", "transactions.settlement_id")->where("transactions.settlement_id", "!=", 0);
+        });
 
         if ($type == "payin") {
             $builder->where('transactions.service', 'payin');
@@ -894,8 +856,9 @@ class Tables extends BaseController
         }
 
         if ($provider > 0) {
-            $builder
-                ->where(function($q) use ($provider) { $q->orWhere('transactions.payin_provider', $provider)->orWhere('transactions.payout_provider', $provider); });
+            $builder->where(function($q) use ($provider) {
+                $q->orWhere('transactions.payin_provider', $provider)->orWhere('transactions.payout_provider', $provider);
+            });
         }
 
         if (!empty($searchBy) && !empty($searchValue)) {
@@ -905,25 +868,31 @@ class Tables extends BaseController
                 } elseif ($searchBy == "settlement_txnid") {
                     $builder->where('settlements.txnid', 'like', '%' . $searchValue . '%');
                 } else {
-                    $builder->where('transactions.' . $searchBy, 'like', '%' . $searchValue . '%');
+                    $builder->like('transactions.' . $searchBy, $searchValue);
                 }
             }
         }
 
         $builder->orderBy('transactions.id', "DESC");
 
-        $columns = ["SR", "USER", "SERVICE", "TXNID"];
+        $columns = [
+            "SR",
+            "USER",
+            "SERVICE",
+            "TXNID",
+        ];
+
         if (in_array($type, ['payin', 'payout', 'all'])) {
             $columns[] = "MERCHANT TXNID";
         }
         $columns[] = "REFERENCE ID";
         $columns[] = "RRN";
         $columns[] = "STATUS";
-        $columns[] = "NAME";
+        $columns[] = "PAYER NAME";
         if (in_array($type, ['payin', 'all'])) {
-            $columns[] = "EMAIL";
+            $columns[] = "PAYER EMAIL";
         }
-        $columns[] = "PHONE";
+        $columns[] = "PAYER PHONE";
         $columns[] = "AMOUNT";
         $columns[] = "CHARGES";
         $columns[] = "GST";
@@ -933,18 +902,22 @@ class Tables extends BaseController
             $columns[] = "PAYEE VPA";
             $columns[] = "PAYEE PHONE";
         }
+
         if (in_array($type, ['payout', 'all'])) {
             $columns[] = "ACCOUNT NUMBER";
             $columns[] = "IFSC CODE";
             $columns[] = "BANK NAME";
         }
+
         $columns[] = "ORDER ID";
         $columns[] = "SOURCE";
+
         if (in_array($type, ['payout', 'all'])) {
-            $columns[] = "IS DEBITED";
-            $columns[] = "IS REFUNDED";
-            $columns[] = "IS PROCESSED";
+            $columns[] = "DEBITED";
+            $columns[] = "REFUNDED";
+            $columns[] = "PROCESSED";
         }
+
         $columns[] = "REASON";
         $columns[] = "REMARKS";
         $columns[] = "PROVIDER NAME";
@@ -1031,16 +1004,9 @@ class Tables extends BaseController
         ]);
     }
 
-    public function wallet()
+    public function wallet(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
-       
-
         $availableSearchKeys = ["txnid"];
-        $request = request();
-        $session = session();
         $offset = $request->input('start');
         $limit = $request->input('length');
         $searchBy = $request->input('searchBy');
@@ -1051,35 +1017,34 @@ class Tables extends BaseController
         $endDate = $request->input('endDate') . " 23:59:59";
         $user_id = $request->input('user_id');
 
-        $transactionModel = new \App\Models\Wallet();
+        $countQuery = Wallet::query();
 
         if ($type != "all") {
-            if($type == "REFUND-DEBITED"){
-                $transactionModel->where('wallet_transactions.remarks', $type);
-            }else{
-                $transactionModel->where('wallet_transactions.txn_type', $type);
+            if ($type == "REFUND-DEBITED") {
+                $countQuery->where('wallet_transactions.remarks', $type);
+            } else {
+                $countQuery->where('wallet_transactions.txn_type', $type);
             }
         }
-        
 
-        $transactionModel->where('wallet_transactions.created_at', '>=', $startDate);
-        $transactionModel->where('wallet_transactions.created_at', '<=', $endDate);
+        $countQuery->where('wallet_transactions.created_at', '>=', $startDate);
+        $countQuery->where('wallet_transactions.created_at', '<=', $endDate);
 
         if ($user_id > 0) {
-            $transactionModel->where("wallet_transactions.user_id", $user_id);
+            $countQuery->where("wallet_transactions.user_id", $user_id);
         }
 
-        $totalTransactions = $transactionModel->count();
-        $builder = $transactionModel->query();
+        $totalTransactions = $countQuery->count();
+        $builder = Wallet::query();
 
         $builder->selectRaw("wallet_transactions.*, users.name as user");
         $builder->join("users", "users.id", "=", "wallet_transactions.user_id");
 
         if ($type != "all") {
-            if($type == "REFUND-DEBITED"){
-               $builder->where('wallet_transactions.remarks', $type); 
-            }else{
-            $builder->where('wallet_transactions.txn_type', $type);
+            if ($type == "REFUND-DEBITED") {
+                $builder->where('wallet_transactions.remarks', $type);
+            } else {
+                $builder->where('wallet_transactions.txn_type', $type);
             }
         }
 
@@ -1104,31 +1069,30 @@ class Tables extends BaseController
             $builder->limit($limit, $offset);
         }
 
-        $query = $builder->get();
-        $transactions = $query;
+        $transactions = $builder->get();
 
-        $extraBuiler = (new \App\Models\Wallet())->query();
-        $extraBuiler->selectRaw("SUM(net_amount) as total_amount, txn_type");
-        $extraBuiler->groupBy('txn_type');
+        $extraBuilder = Wallet::query();
+        $extraBuilder->selectRaw("SUM(net_amount) as total_amount, txn_type");
+        $extraBuilder->groupBy('txn_type');
 
         if ($type != "all") {
-            $extraBuiler->where('wallet_transactions.txn_type', $type);
+            $extraBuilder->where('wallet_transactions.txn_type', $type);
         }
 
-        $extraBuiler->where('wallet_transactions.created_at', '>=', $startDate);
-        $extraBuiler->where('wallet_transactions.created_at', '<=', $endDate);
+        $extraBuilder->where('wallet_transactions.created_at', '>=', $startDate);
+        $extraBuilder->where('wallet_transactions.created_at', '<=', $endDate);
 
         if ($user_id > 0) {
-            $extraBuiler->where("wallet_transactions.user_id", $user_id);
+            $extraBuilder->where("wallet_transactions.user_id", $user_id);
         }
 
         if (!empty($searchBy) && !empty($searchValue)) {
             if (in_array($searchBy, $availableSearchKeys)) {
-                $extraBuiler->like('wallet_transactions.' . $searchBy, $searchValue);
+                $extraBuilder->like('wallet_transactions.' . $searchBy, $searchValue);
             }
         }
 
-        $extraData = $extraBuiler->get();
+        $extraData = $extraBuilder->get();
 
         $extraResult = [];
         foreach ($extraData as $ex) {
@@ -1158,7 +1122,6 @@ class Tables extends BaseController
             $index++;
         }
 
-        // Return JSON response
         return response()->json([
             'draw' => $draw,
             'recordsTotal' => $totalTransactions,
@@ -1177,17 +1140,14 @@ class Tables extends BaseController
         ], 200);
     }
 
-    public function export_wallet_transactions()
+    public function export_wallet_transactions(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
+        $admin = Admin::find(session('admin_id'));
         if (!$admin) {
             abort(401, 'Unauthorized');
         }
 
         $availableSearchKeys = ["txnid"];
-        $request = request();
         $searchBy = $request->input('searchBy');
         $searchValue = $request->input('searchValue');
         $type = $request->input('type');
@@ -1195,9 +1155,7 @@ class Tables extends BaseController
         $endDate = $request->input('endDate');
         $user_id = $request->input('user_id');
 
-        $transactionModel = new \App\Models\Wallet();
-        $builder = $transactionModel->query();
-
+        $builder = Wallet::query();
         $builder->selectRaw("wallet_transactions.*, users.name as user");
         $builder->join("users", "users.id", "=", "wallet_transactions.user_id");
 
@@ -1228,7 +1186,7 @@ class Tables extends BaseController
 
         $builder->orderBy('wallet_transactions.id', "DESC");
 
-        $filename = 'wallet_transactions_' . date('Ymd_His') . '.csv';
+        $filename = 'wallet_transactions_' . now()->format('Ymd_His') . '.csv';
 
         $columns = [
             "SR",
@@ -1271,15 +1229,9 @@ class Tables extends BaseController
         ]);
     }
 
-    public function credits()
+    public function credits(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
-       
         $availableSearchKeys = ["txnid"];
-        $request = request();
-        $session = session();
         $offset = $request->input('start');
         $limit = $request->input('length');
         $searchBy = $request->input('searchBy');
@@ -1287,16 +1239,16 @@ class Tables extends BaseController
         $draw = (int) $request->input('draw');
         $type = $request->input('type');
 
-        $creditsModel = new \App\Models\Credits();
+        $countQuery = Credits::query();
 
         if ($type == "pending") {
-            $creditsModel->where("debited", 0);
+            $countQuery->where("debited", 0);
         } elseif ($type == "completed") {
-            $creditsModel->where("debited", 1);
+            $countQuery->where("debited", 1);
         }
 
-        $totalCredits = $creditsModel->count();
-        $builder = $creditsModel->query();
+        $totalCredits = $countQuery->count();
+        $builder = Credits::query();
 
         $builder->selectRaw("credits.*, users.name as user");
         $builder->join("users", "users.id", "=", "credits.user_id");
@@ -1321,8 +1273,7 @@ class Tables extends BaseController
             $builder->limit($limit, $offset);
         }
 
-        $query = $builder->get();
-        $transactions = $query;
+        $transactions = $builder->get();
 
         $data = [];
         $index = 1;
@@ -1341,7 +1292,7 @@ class Tables extends BaseController
             if ($type == "completed") {
                 $row[] = $transaction->debited_at;
             }
-            $row[] =  '<button onclick="debitCredits(\'' . $transaction->id . '\')" class="btn btn-sm btn-primary-transparent"><i class="ti ti-circle-minus"></i></button>' ;
+            $row[] = '<button onclick="debitCredits(\'' . $transaction->id . '\')" class="btn btn-sm btn-primary-transparent"><i class="ti ti-circle-minus"></i></button>';
 
             $data[] = $row;
             $index++;
@@ -1355,34 +1306,28 @@ class Tables extends BaseController
         ], 200);
     }
 
-    public function hold_transactions()
+    public function hold_transactions(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
         $availableSearchKeys = ["txnid"];
-        $request = request();
         $offset = (int) $request->input('start');
         $limit = (int) $request->input('length');
         $searchBy = $request->input('searchBy');
         $searchVal = $request->input('searchValue');
         $draw = (int) $request->input('draw');
-        $status = $request->input('status'); // hold or released
+        $status = $request->input('status');
         $userId = $request->input('userId');
 
-        $holdWalletModel = new \App\Models\HoldWallet();
-        $builder = $holdWalletModel->query();
-
+        $builder = HoldWallet::query();
         $builder->selectRaw("hold_wallet_transactions.*, users.name as username");
         $builder->join("users", "users.id", "=", "hold_wallet_transactions.user_id");
 
         if ($status == "hold") {
             $builder->where("hold_wallet_transactions.type", "hold");
             $builder->whereRaw("NOT EXISTS (
-            SELECT 1 FROM hold_wallet_transactions h2
-            WHERE h2.txnid = hold_wallet_transactions.txnid
-              AND h2.type = 'released'
-        )");
+                SELECT 1 FROM hold_wallet_transactions h2
+                WHERE h2.txnid = hold_wallet_transactions.txnid
+                  AND h2.type = 'released'
+            )");
         } elseif ($status == "released") {
             $builder->where("hold_wallet_transactions.type", "released");
         }
@@ -1399,7 +1344,7 @@ class Tables extends BaseController
 
         $totalBuilder = clone $builder;
         $recordsFiltered = $totalBuilder->count();
-        $recordsTotal = $holdWalletModel->count();
+        $recordsTotal = HoldWallet::count();
 
         $builder->orderBy('hold_wallet_transactions.id', "DESC");
         if ($limit != -1) {
@@ -1407,7 +1352,7 @@ class Tables extends BaseController
         }
 
         $transactions = $builder->get();
-       
+
         $data = [];
         $index = $offset + 1;
         foreach ($transactions as $txn) {
@@ -1475,24 +1420,17 @@ class Tables extends BaseController
         }
     }
 
-    public function export_chargebacks()
+    public function export_chargebacks(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
-       
         $availableSearchKeys = ["rrn", "txnid", "amount", "vpa"];
-        $request = request();
-        $session = session();
         $searchBy = $request->input('searchBy');
         $searchValue = $request->input('searchValue');
         $userId = $request->input('user_id');
         $status = $request->input('status');
         $startDate = $request->input('startDate') . " 00:00:00";
         $endDate = $request->input('endDate') . " 23:59:59";
-        $chargebackModel = new \App\Models\Chargeback();
-        $totalChargebacks = $chargebackModel->count();
-        $builder = $chargebackModel->query();
+
+        $builder = Chargeback::query();
         $builder->selectRaw("chargebacks.*, transactions.* , transactions.user_id as user_id, users.name as user_name, chargebacks.status as status, chargebacks.created_at as chargeback_time, chargebacks.updated_at as last_update");
         $builder->join("transactions", "transactions.rrn", "=", "chargebacks.rrn");
         $builder->join("users", "users.id", "=", "chargebacks.user_id");
@@ -1524,7 +1462,7 @@ class Tables extends BaseController
 
         $builder->orderBy('chargebacks.id', "DESC");
         $columns = ["ID", "USER", "TXNID", "PAYEE NAME", "PAYEE PHONE", "PAYEE VPA", "RRN", "AMOUNT", "REFUND RRN", "STATUS", "TXN COMPLETE TIME", "CHARGEBACK TIME", "NO OF CHARGEBACK", "LAST UPDATE TIME"];
-        $filename = 'chargebacks_' . date('Ymd_His') . '.csv';
+        $filename = 'chargebacks_' . now()->format('Ymd_His') . '.csv';
 
         return response()->streamDownload(function() use ($builder, $columns) {
             $output = fopen('php://output', 'w');
@@ -1558,14 +1496,9 @@ class Tables extends BaseController
         ]);
     }
 
-    public function error_logs()
+    public function error_logs(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
-
         $availableSearchKeys = ["txnid", "type"];
-        $request = request();
         $offset = (int) $request->input('start', 0);
         $limit = (int) $request->input('length', 10);
         $searchBy = $request->input('searchBy');
@@ -1576,10 +1509,9 @@ class Tables extends BaseController
         $endDate = $request->input('endDate') . " 23:59:59";
         $draw = (int) $request->input('draw');
 
-        $errorLogModel = new \App\Models\ErrorLog();
-        $totalErrorLogs = $errorLogModel->whereBetween('error_logs.created_at', [$startDate, $endDate])->count();
+        $totalErrorLogs = ErrorLog::whereBetween('error_logs.created_at', [$startDate, $endDate])->count();
 
-        $builder = $errorLogModel->query();
+        $builder = ErrorLog::query();
         $builder->selectRaw("error_logs.*, COALESCE(providers.name, 'N/A') as provider_name");
         $builder->leftJoin("providers", "providers.id", "=", "error_logs.provider");
         $builder->whereBetween('error_logs.created_at', [$startDate, $endDate]);
@@ -1644,27 +1576,21 @@ class Tables extends BaseController
         ], 200);
     }
 
-    public function profit()
+    public function profit(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
-
-        $request = request();
         $offset = (int) $request->input('start', 0);
         $limit = (int) $request->input('length', 10);
         $draw = (int) $request->input('draw', 1);
 
-        $startDate = $request->input('startDate') ? ($request->input('startDate') . " 00:00:00") : date('Y-m-d 00:00:00', strtotime('-6 days'));
-        $endDate = $request->input('endDate') ? ($request->input('endDate') . " 23:59:59") : date('Y-m-d 23:59:59');
+        $startDate = $request->input('startDate') ? ($request->input('startDate') . " 00:00:00") : now()->subDays(6)->startOfDay()->toDateTimeString();
+        $endDate = $request->input('endDate') ? ($request->input('endDate') . " 23:59:59") : now()->endOfDay()->toDateTimeString();
 
         $service = $request->input('service');
         $providerId = $request->input('provider');
         $userId = $request->input('user_id');
         $searchValue = trim($request->input('searchValue', ''));
 
-        $transactionModel = new \App\Models\Transaction();
-        $builder = $transactionModel->query();
+        $builder = Transaction::query();
         $builder->selectRaw("transactions.*, users.name as user_name, users.merchant_id as merchant_id");
         $builder->join("users", "users.id", "=", "transactions.user_id");
         $builder->where("transactions.status", "Success");
@@ -1694,9 +1620,9 @@ class Tables extends BaseController
             });
         }
 
-        $allProviders = \App\Models\Providers::all()->keyBy('id');
-        $allSlabs = \App\Models\Providerslab::all();
-        $gstRate = \App\Models\Settings::getGSTRate();
+        $allProviders = Providers::all()->keyBy('id');
+        $allSlabs = Providerslab::all();
+        $gstRate = Settings::getGSTRate();
 
         $filteredTransactionsCount = (clone $builder)->count();
         $allFilteredList = (clone $builder)->select([
@@ -1724,7 +1650,6 @@ class Tables extends BaseController
             $provGst = floatval($item->provider_gst ?? 0);
             $provTotal = $provBase + $provGst;
 
-            // Fallback for legacy rows if not stored
             if ($provTotal <= 0 && $amt > 0) {
                 $pId = ($item->service === 'payout') ? $item->payout_provider : $item->payin_provider;
                 $matchedSlab = $allSlabs->first(function($s) use ($pId, $amt) {
@@ -1762,7 +1687,6 @@ class Tables extends BaseController
             $providerObj = $allProviders->get($provId);
             $providerName = $providerObj ? $providerObj->name : 'N/A';
 
-            // Fetch directly from transaction table entry
             $provBase = floatval($txn->provider_charge ?? 0);
             $provGst = floatval($txn->provider_gst ?? 0);
             $providerTotal = $provBase + $provGst;
@@ -1806,7 +1730,7 @@ class Tables extends BaseController
             $data[] = [
                 $index,
                 '<div><span class="fw-semibold">' . htmlspecialchars($txn->txnid) . '</span><br>' . $serviceBadge . '</div>',
-                '<div>' . date('d M Y', strtotime($txn->created_at)) . '<br><small class="text-muted">' . date('h:i A', strtotime($txn->created_at)) . '</small></div>',
+                '<div>' . Carbon::parse($txn->created_at)->format('d M Y') . '<br><small class="text-muted">' . Carbon::parse($txn->created_at)->format('h:i A') . '</small></div>',
                 '<div><span class="fw-semibold">' . htmlspecialchars($txn->user_name) . '</span><br><small class="text-muted">' . htmlspecialchars($txn->merchant_id ?? '') . '</small></div>',
                 '<span class="badge bg-info-transparent">' . htmlspecialchars($providerName) . '</span>',
                 '<strong class="fs-13">₹ ' . number_format($amt, 2) . '</strong>',
@@ -1819,7 +1743,7 @@ class Tables extends BaseController
             $index++;
         }
 
-        $totalOverall = \App\Models\Transaction::where('status', 'Success')->count();
+        $totalOverall = Transaction::where('status', 'Success')->count();
 
         return response()->json([
             'draw' => $draw,
@@ -1837,23 +1761,18 @@ class Tables extends BaseController
         ], 200);
     }
 
-    public function export_profit()
+    public function export_profit(Request $request)
     {
-        $session = session();
-        $admin = new \App\Models\Admin();
-        $admin = $admin->find($session->get('admin_id'));
+        $filename = 'admin_profit_report_' . now()->format('Ymd_His') . '.csv';
 
-        $filename = 'admin_profit_report_' . date('Ymd_His') . '.csv';
-
-        $request = request();
-        $startDate = $request->input('startDate') ? ($request->input('startDate') . " 00:00:00") : date('Y-m-d 00:00:00', strtotime('-6 days'));
-        $endDate = $request->input('endDate') ? ($request->input('endDate') . " 23:59:59") : date('Y-m-d 23:59:59');
+        $startDate = $request->input('startDate') ? ($request->input('startDate') . " 00:00:00") : now()->subDays(6)->startOfDay()->toDateTimeString();
+        $endDate = $request->input('endDate') ? ($request->input('endDate') . " 23:59:59") : now()->endOfDay()->toDateTimeString();
         $service = $request->input('service');
         $providerId = $request->input('provider');
         $userId = $request->input('user_id');
         $searchValue = trim($request->input('searchValue', ''));
 
-        $builder = (new \App\Models\Transaction())->query();
+        $builder = Transaction::query();
         $builder->selectRaw("transactions.*, users.name as user_name, users.merchant_id as merchant_id");
         $builder->join("users", "users.id", "=", "transactions.user_id");
         $builder->where("transactions.status", "Success");
@@ -1879,94 +1798,92 @@ class Tables extends BaseController
             });
         }
 
-        $allProviders = \App\Models\Providers::all()->keyBy('id');
-        $allSlabs = \App\Models\Providerslab::all();
-        $gstRate = \App\Models\Settings::getGSTRate();
+        $allProviders = Providers::all()->keyBy('id');
+        $allSlabs = Providerslab::all();
+        $gstRate = Settings::getGSTRate();
 
         return response()->streamDownload(function() use ($builder, $allProviders, $allSlabs, $gstRate) {
             $transactions = $builder->orderBy('transactions.id', 'DESC')->get();
 
             $output = fopen('php://output', 'w');
-        fputcsv($output, [
-            '#',
-            'Txn ID',
-            'Merchant Txn ID',
-            'Date Time',
-            'Service',
-            'Partner Name',
-            'Merchant ID',
-            'Provider',
-            'Amount',
-            'Partner Base Charge',
-            'Partner GST',
-            'Partner Total Charge',
-            'Provider Base Charge',
-            'Provider GST',
-            'Provider Total Charge',
-            'Admin Profit',
-            'Margin %'
-        ]);
-
-        $i = 1;
-        foreach ($transactions as $txn) {
-            $amt = floatval($txn->amount);
-            $pCharge = floatval($txn->charges);
-            $pGst = floatval($txn->gst);
-            $partnerTotal = $pCharge + $pGst;
-
-            $provId = ($txn->service === 'payout') ? $txn->payout_provider : $txn->payin_provider;
-            $providerObj = $allProviders->get($provId);
-            $providerName = $providerObj ? $providerObj->name : 'N/A';
-
-            // Fetch directly from transaction table entry
-            $provBase = floatval($txn->provider_charge ?? 0);
-            $provGst = floatval($txn->provider_gst ?? 0);
-            $providerTotal = $provBase + $provGst;
-
-            if ($providerTotal <= 0 && $amt > 0) {
-                $matchedSlab = $allSlabs->first(function($s) use ($provId, $amt) {
-                    return $s->provider_id == $provId && $amt >= floatval($s->min_amount) && $amt <= floatval($s->max_amount);
-                });
-                if ($matchedSlab) {
-                    $provBase = $matchedSlab->percent ? ($matchedSlab->amount * $amt) / 100 : floatval($matchedSlab->amount);
-                    $provGst = $matchedSlab->gst ? ($provBase * $gstRate) / 100 : 0.0;
-                    $providerTotal = $provBase + $provGst;
-                }
-            }
-
-            $profit = $partnerTotal - $providerTotal;
-            $marginPct = ($amt > 0) ? ($profit / $amt) * 100 : 0.0;
-
             fputcsv($output, [
-                $i,
-                $txn->txnid,
-                $txn->merchant_txnid,
-                $txn->created_at,
-                strtoupper($txn->service),
-                $txn->user_name,
-                $txn->merchant_id,
-                $providerName,
-                number_format($amt, 2, '.', ''),
-                number_format($pCharge, 2, '.', ''),
-                number_format($pGst, 2, '.', ''),
-                number_format($partnerTotal, 2, '.', ''),
-                number_format($provBase, 2, '.', ''),
-                number_format($provGst, 2, '.', ''),
-                number_format($providerTotal, 2, '.', ''),
-                number_format($profit, 2, '.', ''),
-                number_format($marginPct, 2, '.', '') . '%'
+                '#',
+                'Txn ID',
+                'Merchant Txn ID',
+                'Date Time',
+                'Service',
+                'Partner Name',
+                'Merchant ID',
+                'Provider',
+                'Amount',
+                'Partner Base Charge',
+                'Partner GST',
+                'Partner Total Charge',
+                'Provider Base Charge',
+                'Provider GST',
+                'Provider Total Charge',
+                'Admin Profit',
+                'Margin %'
             ]);
-            $i++;
-        }
+
+            $i = 1;
+            foreach ($transactions as $txn) {
+                $amt = floatval($txn->amount);
+                $pCharge = floatval($txn->charges);
+                $pGst = floatval($txn->gst);
+                $partnerTotal = $pCharge + $pGst;
+
+                $provId = ($txn->service === 'payout') ? $txn->payout_provider : $txn->payin_provider;
+                $providerObj = $allProviders->get($provId);
+                $providerName = $providerObj ? $providerObj->name : 'N/A';
+
+                $provBase = floatval($txn->provider_charge ?? 0);
+                $provGst = floatval($txn->provider_gst ?? 0);
+                $providerTotal = $provBase + $provGst;
+
+                if ($providerTotal <= 0 && $amt > 0) {
+                    $matchedSlab = $allSlabs->first(function($s) use ($provId, $amt) {
+                        return $s->provider_id == $provId && $amt >= floatval($s->min_amount) && $amt <= floatval($s->max_amount);
+                    });
+                    if ($matchedSlab) {
+                        $provBase = $matchedSlab->percent ? ($matchedSlab->amount * $amt) / 100 : floatval($matchedSlab->amount);
+                        $provGst = $matchedSlab->gst ? ($provBase * $gstRate) / 100 : 0.0;
+                        $providerTotal = $provBase + $provGst;
+                    }
+                }
+
+                $profit = $partnerTotal - $providerTotal;
+                $marginPct = ($amt > 0) ? ($profit / $amt) * 100 : 0.0;
+
+                fputcsv($output, [
+                    $i,
+                    $txn->txnid,
+                    $txn->merchant_txnid,
+                    $txn->created_at,
+                    strtoupper($txn->service),
+                    $txn->user_name,
+                    $txn->merchant_id,
+                    $providerName,
+                    number_format($amt, 2, '.', ''),
+                    number_format($pCharge, 2, '.', ''),
+                    number_format($pGst, 2, '.', ''),
+                    number_format($partnerTotal, 2, '.', ''),
+                    number_format($provBase, 2, '.', ''),
+                    number_format($provGst, 2, '.', ''),
+                    number_format($providerTotal, 2, '.', ''),
+                    number_format($profit, 2, '.', ''),
+                    number_format($marginPct, 2, '.', '') . '%'
+                ]);
+                $i++;
+            }
 
             fclose($output);
         }, $filename, ['Content-Type' => 'text/csv']);
     }
 
-    public function payin_transactions()
+    public function payin_transactions(Request $request)
     {
         $availableSearchKeys = ["rrn", "txnid", "merchant_txnid", "name", "phone", "status"];
-        $request = request();
         $offset = (int) $request->input('start', 0);
         $limit = (int) $request->input('length', 10);
         if ($limit <= 0) {
@@ -1977,16 +1894,10 @@ class Tables extends BaseController
         $draw = (int) $request->input('draw');
         $settlementId = $request->input('settlementId');
 
-        $builder = \App\Models\Transaction::query()->where('service', 'payin');
+        $builder = Transaction::query()->where('service', 'payin');
 
         if (!empty($settlementId)) {
-            $decryptedSettlementId = openssl_decrypt(
-                hex2bin($settlementId),
-                'AES-256-CBC',
-                env("encryption.key"),
-                OPENSSL_RAW_DATA,
-                substr(hash('sha256', env("encryption.key")), 0, 16)
-            );
+            $decryptedSettlementId = $this->decrypt($settlementId);
             $targetId = ($decryptedSettlementId !== false && $decryptedSettlementId > 0) ? $decryptedSettlementId : $settlementId;
             $builder->where('settlement_id', $targetId);
         }
@@ -2032,4 +1943,3 @@ class Tables extends BaseController
         ]);
     }
 }
-

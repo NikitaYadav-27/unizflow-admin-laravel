@@ -1,7 +1,6 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "add_package";
-    echo view('header', get_defined_vars());
-} ?> <nav aria-label="breadcrumb" class="my-4">
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'add_package'])
+@endif <nav aria-label="breadcrumb" class="my-4">
   <ol class="breadcrumb breadcrumb-style2 mb-0">
     <li class="breadcrumb-item">
       <a href="javascript:void(0);">
@@ -13,7 +12,7 @@
     </li>
     <li class="breadcrumb-item">
       <a href="javascript:void(0);">
-        <i class="ti ti-box me-1 fs-15"></i> <?= $package['name'] ?> </a>
+        <i class="ti ti-box me-1 fs-15"></i> {{ $package['name'] }} </a>
     </li>
     <li class="breadcrumb-item active" aria-current="page">
       <i class="ti ti-list me-1 fs-15"></i>Package Slabs
@@ -53,11 +52,11 @@
       <div class="card-body px-0 pt-0">
         
 
-          <form action="/api/admin/update_package_slab" method="POST">
+          <form action="{{ route('admin.package.slabs.update') }}" method="POST">
               
               
             <input type="hidden" name="service" value="payin">
-            <input type="hidden" name="package_id" value="<?= $package['id']; ?>">
+            <input type="hidden" name="package_id" value="{{ $package['id'] }}">
             
             
             <table class="table w-100">
@@ -70,31 +69,31 @@
                     <th style="padding: 12px 10px !important;" class="text-center">GST</th>
                 </tr>
                 </thead>
-                <?php for($i = 1; $i < 7; $i ++) : ?>
+                @for ($i = 1; $i < 7; $i++)
                 <tr>
                     <td>
-                         <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($slabs['payin'][$i-1])){ echo $slabs['payin'][$i-1]['min_amount']; } ?>" placeholder="Min Amount" name="min_amount_<?= $i; ?>">
+                         <input type="number" class="form-control text-center" step="0.01" value="{{ $slabs['payin'][$i-1]['min_amount'] ?? '' }}" placeholder="Min Amount" name="min_amount_{{ $i }}">
                     </td>
                      <td>
-                        <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($slabs['payin'][$i-1])){ echo $slabs['payin'][$i-1]['max_amount']; } ?>" placeholder="Max Amount" name="max_amount_<?= $i; ?>">
+                        <input type="number" class="form-control text-center" step="0.01" value="{{ $slabs['payin'][$i-1]['max_amount'] ?? '' }}" placeholder="Max Amount" name="max_amount_{{ $i }}">
                     </td>
                      <td>
-                        <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($slabs['payin'][$i-1])){ echo $slabs['payin'][$i-1]['amount']; } ?>" placeholder="Charge Amount" name="charge_amount_<?= $i; ?>">
+                        <input type="number" class="form-control text-center" step="0.01" value="{{ $slabs['payin'][$i-1]['amount'] ?? '' }}" placeholder="Charge Amount" name="charge_amount_{{ $i }}">
                     </td>
                      <td>
                     <div class="custom-toggle-switch toggle-sm ms-2">
-                  <input id="size-smrecharge<?= $i; ?>" type="checkbox" value="percent" name="percent_<?= $i; ?>" <?php if(isset($slabs['payin'][$i-1])){ echo $slabs['payin'][$i-1]['percent'] == 1?"checked":""; } ?>>
-                  <label for="size-smrecharge<?= $i; ?>" class="label-primary"></label>
+                  <input id="size-smrecharge{{ $i }}" type="checkbox" value="percent" name="percent_{{ $i }}" {{ isset($slabs['payin'][$i-1]) && $slabs['payin'][$i-1]['percent'] == 1 ? 'checked' : '' }}>
+                  <label for="size-smrecharge{{ $i }}" class="label-primary"></label>
                 </div>
                     </td>
                      <td>
                         <div class="custom-toggle-switch toggle-sm ms-2">
-                  <input id="size-smgrecharge<?= $i; ?>" type="checkbox" value="gst" name="gst_<?= $i; ?>" <?php if(isset($slabs['payin'][$i-1])){ echo $slabs['payin'][$i-1]['gst'] == 1?"checked":""; } ?>>
-                  <label for="size-smgrecharge<?= $i; ?>" class="label-primary"></label>
+                  <input id="size-smgrecharge{{ $i }}" type="checkbox" value="gst" name="gst_{{ $i }}" {{ isset($slabs['payin'][$i-1]) && $slabs['payin'][$i-1]['gst'] == 1 ? 'checked' : '' }}>
+                  <label for="size-smgrecharge{{ $i }}" class="label-primary"></label>
                 </div>
                     </td>
                 </tr>
-                <?php endfor; ?>
+                @endfor
             </table>
             
            
@@ -111,11 +110,11 @@
       <div class="card-body px-0 pt-0">
         
 
-          <form action="/api/admin/update_package_slab" method="POST">
+          <form action="{{ route('admin.package.slabs.update') }}" method="POST">
               
               
             <input type="hidden" name="service" value="payout">
-            <input type="hidden" name="package_id" value="<?= $package['id']; ?>">
+            <input type="hidden" name="package_id" value="{{ $package['id'] }}">
             
             
             <table class="table w-100">
@@ -128,31 +127,31 @@
                     <th style="padding: 12px 10px !important;" class="text-center">GST</th>
                 </tr>
                 </thead>
-                <?php for($i = 1; $i < 7; $i ++) : ?>
+                @for ($i = 1; $i < 7; $i++)
                 <tr>
                     <td>
-                         <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($slabs['payout'][$i-1])){ echo $slabs['payout'][$i-1]['min_amount']; } ?>" placeholder="Min Amount" name="min_amount_<?= $i; ?>">
+                         <input type="number" class="form-control text-center" step="0.01" value="{{ $slabs['payout'][$i-1]['min_amount'] ?? '' }}" placeholder="Min Amount" name="min_amount_{{ $i }}">
                     </td>
                      <td>
-                        <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($slabs['payout'][$i-1])){ echo $slabs['payout'][$i-1]['max_amount']; } ?>" placeholder="Max Amount" name="max_amount_<?= $i; ?>">
+                        <input type="number" class="form-control text-center" step="0.01" value="{{ $slabs['payout'][$i-1]['max_amount'] ?? '' }}" placeholder="Max Amount" name="max_amount_{{ $i }}">
                     </td>
                      <td>
-                        <input type="number" class="form-control text-center" step="0.01" value="<?php if(isset($slabs['payout'][$i-1])){ echo $slabs['payout'][$i-1]['amount']; } ?>" placeholder="Charge Amount" name="charge_amount_<?= $i; ?>">
+                        <input type="number" class="form-control text-center" step="0.01" value="{{ $slabs['payout'][$i-1]['amount'] ?? '' }}" placeholder="Charge Amount" name="charge_amount_{{ $i }}">
                     </td>
                      <td>
                     <div class="custom-toggle-switch toggle-sm ms-2">
-                  <input id="size-smrecharg<?= $i; ?>" type="checkbox" value="percent" name="percent_<?= $i; ?>" <?php if(isset($slabs['payout'][$i-1])){ echo $slabs['payout'][$i-1]['percent'] == 1?"checked":""; } ?>>
-                  <label for="size-smrecharg<?= $i; ?>" class="label-primary"></label>
+                  <input id="size-smrecharg{{ $i }}" type="checkbox" value="percent" name="percent_{{ $i }}" {{ isset($slabs['payout'][$i-1]) && $slabs['payout'][$i-1]['percent'] == 1 ? 'checked' : '' }}>
+                  <label for="size-smrecharg{{ $i }}" class="label-primary"></label>
                 </div>
                     </td>
                      <td>
                         <div class="custom-toggle-switch toggle-sm ms-2">
-                  <input id="size-smgrecharg<?= $i; ?>" type="checkbox" value="gst" name="gst_<?= $i; ?>" <?php if(isset($slabs['payout'][$i-1])){ echo $slabs['payout'][$i-1]['gst'] == 1?"checked":""; } ?>>
-                  <label for="size-smgrecharg<?= $i; ?>" class="label-primary"></label>
+                  <input id="size-smgrecharg{{ $i }}" type="checkbox" value="gst" name="gst_{{ $i }}" {{ isset($slabs['payout'][$i-1]) && $slabs['payout'][$i-1]['gst'] == 1 ? 'checked' : '' }}>
+                  <label for="size-smgrecharg{{ $i }}" class="label-primary"></label>
                 </div>
                     </td>
                 </tr>
-                <?php endfor; ?>
+                @endfor
             </table>
             
     
@@ -185,6 +184,6 @@
   function onRequestError(error) {
     notify("error", error.responseJSON.message);
   }
-</script> <?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+</script> @if (!request()->has('turbo'))
+    @include('footer')
+@endif

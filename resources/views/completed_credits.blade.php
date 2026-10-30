@@ -1,7 +1,6 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "completed_credits";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'completed_credits'])
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
@@ -11,8 +10,6 @@
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-history me-1 fs-15"></i>Completed Credits</li>
     </ol>
 </nav>
-
-
 
 <div class="card">
     <div class="card-body">
@@ -47,7 +44,6 @@
                         placeholder="Search">
                 </div>
 
-
             </div>
         </div>
 
@@ -71,19 +67,14 @@
             </table>
         </div>
 
-
     </div>
 </div>
-
-
-
 
 <script>
 
     window.dataTable = null;
     window.searchBy = "";
     window.searchValue = "";
-
 
     function getTransactions() {
         window.dataTable = $("#dataTable").dataTable(
@@ -115,7 +106,7 @@
 
     function changeSearchBy(value) {
         window.searchBy = value;
-        //refresh data
+
         if (window.searchValue != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -124,7 +115,7 @@
 
     function changeSearchValue(value) {
         window.searchValue = value;
-        //refresh data
+
         if (window.searchBy != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -153,7 +144,6 @@
     }
 </style>
 
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

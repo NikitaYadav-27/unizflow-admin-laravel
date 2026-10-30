@@ -1,9 +1,6 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "banks";
-    echo view('header', get_defined_vars());
-}
-
-?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'banks'])
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
@@ -12,8 +9,6 @@
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-building-bank me-1 fs-15"></i>Banks</li>
     </ol>
 </nav>
-
-
 
 <div class="card">
     <div class="card-body">
@@ -48,8 +43,7 @@
                         placeholder="Search">
                 </div>
                 
-                <button onclick="navigate('/admin/fund-request-banks/add')" class="btn btn-primary" style="padding: .25rem .75rem !important;"><i class="ti ti-circle-plus"></i>&nbsp;&nbsp;Add bank</button>
-
+                <button onclick="navigate('{{ route('admin.fund-request-banks.add') }}')" class="btn btn-primary" style="padding: .25rem .75rem !important;"><i class="ti ti-circle-plus"></i>&nbsp;&nbsp;Add bank</button>
 
             </div>
         </div>
@@ -70,30 +64,29 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <?php $index = 1; foreach((new \App\Models\FundRequestBank())->get() as $bank) :  ?>
+                    @foreach (\App\Models\FundRequestBank::all() as $bank)
                       <tr>
-                        <td><?= $index; ?></td>
-                        <td><?= $bank['name']; ?></td>
-                        <td><?= $bank['account_holder_name']; ?></td>
-                        <td><?= $bank['account_number']; ?></td>
-                        <td><?= $bank['ifsc_code']; ?></td>
-                        <td><?= $bank['bank']; ?></td>
-                        <td><?= $bank['branch']; ?></td>
+                        <td>{{ $loop->iteration }}</td>
+                        <td>{{ $bank->name }}</td>
+                        <td>{{ $bank->account_holder_name }}</td>
+                        <td>{{ $bank->account_number }}</td>
+                        <td>{{ $bank->ifsc_code }}</td>
+                        <td>{{ $bank->bank }}</td>
+                        <td>{{ $bank->branch }}</td>
                         <td>
                             <div class="custom-toggle-switch toggle-sm ms-2">
-                               <input onchange="changeSwitch('<?= $bank['id']; ?>',this.checked);" id="bank-<?= $index ?>" name="toggleswitchsize" type="checkbox" <?= $bank['active'] == 1?"checked":""; ?>>
-                               <label for="bank-<?= $index ?>" class="label-primary"></label>
+                               <input onchange="changeSwitch('{{ $bank->id }}', this.checked);" id="bank-{{ $loop->iteration }}" name="toggleswitchsize" type="checkbox" {{ $bank->active == 1 ? 'checked' : '' }}>
+                               <label for="bank-{{ $loop->iteration }}" class="label-primary"></label>
                             </div>
                         </td>
                         <td>
-                            <button onclick="navigate('/admin/bank-users/<?= bin2hex(openssl_encrypt($bank['id'], 'AES-256-CBC', env("encryption.key"), OPENSSL_RAW_DATA, substr(hash('sha256', env("encryption.key")), 0, 16))) ?>')" class="btn btn-sm btn-success-transparent"><i class="ti ti-users"></i> <?= count(explode(",",$bank['users'])) ?></button>
+                            <button onclick="navigate('{{ route('admin.bank-users.show', ['id' => bin2hex(openssl_encrypt($bank->id, 'AES-256-CBC', env('encryption.key'), OPENSSL_RAW_DATA, substr(hash('sha256', env('encryption.key')), 0, 16)))]) }}')" class="btn btn-sm btn-success-transparent"><i class="ti ti-users"></i> {{ count(explode(',', $bank->users ?? '')) }}</button>
                         </td> 
                       </tr>
-                    <?php $index++; endforeach; ?>
+                    @endforeach
                 </tbody>
             </table>
         </div>
-
 
     </div>
 </div>
@@ -163,7 +156,6 @@
     load();
 </script>
 
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

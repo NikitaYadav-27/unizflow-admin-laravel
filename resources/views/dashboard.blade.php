@@ -1,11 +1,11 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "dashboard";
-    echo view('header', get_defined_vars());
-}
-$wallets = (new \App\Models\User())->selectRaw("sum(wallet) as wallet, sum(hold_wallet) as hold_wallet")->first();
-$unsettledTotal = (new \App\Models\Transaction())->where('service', 'payin')->where('status', 'Success')->where('settled', 0)->sum('net_amount');
-?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'dashboard'])
+@endif
 
+@php
+$wallets = \App\Models\User::selectRaw("sum(wallet) as wallet, sum(hold_wallet) as hold_wallet")->first();
+$unsettledTotal = \App\Models\Transaction::where('service', 'payin')->where('status', 'Success')->where('settled', 0)->sum('net_amount');
+@endphp
 
 <div class="d-md-flex d-block align-items-center justify-content-between py-3 page-header-breadcrumb">
     <div>
@@ -20,9 +20,9 @@ $unsettledTotal = (new \App\Models\Transaction())->where('service', 'payin')->wh
 
     </div>
     <div class="btn-list mt-md-0 mt-2 d-flex align-items-center gap-2 flex-wrap">
-        <button class="btn btn-primary text-nowrap" style="padding: .375rem .75rem !important;" title="Total Usable Wallets"><i class="ti ti-wallet"></i>&nbsp;₹ <?= round($wallets['wallet'],2) ?></button>
-        <button class="btn btn-purple text-nowrap" style="padding: .375rem .75rem !important;" title="Total Funds on Hold"><i class="ti ti-alert-circle"></i>&nbsp;₹ <?= round($wallets['hold_wallet'],2) ?></button>
-        <button class="btn btn-warning text-nowrap" style="padding: .375rem .75rem !important;" title="Total Unsettled Payin Collections"><i class="ti ti-clock"></i>&nbsp;Unsettled: ₹ <?= number_format($unsettledTotal, 2) ?></button>
+        <button class="btn btn-primary text-nowrap" style="padding: .375rem .75rem !important;" title="Total Usable Wallets"><i class="ti ti-wallet"></i>&nbsp;₹ {{ round($wallets['wallet'] ?? 0, 2) }}</button>
+        <button class="btn btn-purple text-nowrap" style="padding: .375rem .75rem !important;" title="Total Funds on Hold"><i class="ti ti-alert-circle"></i>&nbsp;₹ {{ round($wallets['hold_wallet'] ?? 0, 2) }}</button>
+        <button class="btn btn-warning text-nowrap" style="padding: .375rem .75rem !important;" title="Total Unsettled Payin Collections"><i class="ti ti-clock"></i>&nbsp;Unsettled: ₹ {{ number_format($unsettledTotal, 2) }}</button>
          <div id="reportrange" class="form-control sm-w-100" style="width: min-content; white-space: nowrap;">
            <i class="ti ti-calendar"></i>&nbsp;
            <span></span> <i class="fa fa-caret-down"></i>
@@ -31,11 +31,11 @@ $unsettledTotal = (new \App\Models\Transaction())->where('service', 'payin')->wh
 </div>
 
 <div class="row position-relative">
-    <!--<div id="dashLoader" class="d-none justify-content-center align-items-center" style=" position: absolute; top:0;left:0; height: 100%; width: 100%; z-index:9999;">-->
-    <!--    <div class="btn bg-white shadow-lg" style="margin-top: -30%; !important">-->
-    <!--       <p  class="myloader mb-0"></p>-->
-    <!--    </div>-->
-    <!--</div>-->
+    
+    
+    
+    
+    
   <div class="col-xxl-6 col-xl-12">
     <div class="row row-cols-12">
       <div class="col-lg-6">
@@ -172,9 +172,9 @@ $unsettledTotal = (new \App\Models\Transaction())->where('service', 'payin')->wh
                   <label class="mb-1">User</label>
                   <select class="form-control" onchange="updateUser(this.value)">
                     <option value="all">All</option>
-                    <?php foreach((new \App\Models\User())->where("active",1)->get() as $user) : ?>
-                      <option value="<?= $user['id'];?>"><?= $user['name'];?></option>
-                    <?php endforeach; ?>
+                    @foreach (\App\Models\User::where("active", 1)->get() as $user)
+                      <option value="{{ $user->id }}">{{ $user->name }}</option>
+                    @endforeach
                   </select>
                 </div>
               </div>
@@ -337,7 +337,7 @@ $unsettledTotal = (new \App\Models\Transaction())->where('service', 'payin')->wh
     </div>
   </div>
 </div>
-<!--End::row-1 -->
+
 <style>
   .apexcharts-menu-icon {
     display: none;
@@ -355,7 +355,6 @@ $unsettledTotal = (new \App\Models\Transaction())->where('service', 'payin')->wh
  
 
 </style>
-
 
 <script>
   window.startDate = null;
@@ -387,8 +386,8 @@ $unsettledTotal = (new \App\Models\Transaction())->where('service', 'payin')->wh
   
   function load() {
       
-    var start = moment(); // today
-    var end = moment(); // today
+    var start = moment();
+    var end = moment();
 
     function cb(start, end) {
         $('#reportrange span').html(start.format('MMMM D, YYYY') + ' - ' + end.format('MMMM D, YYYY'));
@@ -497,7 +496,7 @@ $unsettledTotal = (new \App\Models\Transaction())->where('service', 'payin')->wh
           });
           
           
-          //status part start
+
           let totalTransactions = 0;
           let totalSuccessTransactions = 0;
           let totalPendingTransactions = 0;
@@ -594,7 +593,7 @@ $unsettledTotal = (new \App\Models\Transaction())->where('service', 'payin')->wh
             bar: {
                 borderRadius: 10,
                 dataLabels: {
-                    position: 'top', // top, center, bottom
+                    position: 'top',
                 },
             }
         },
@@ -679,8 +678,6 @@ load();
 
 </script>
 
-
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

@@ -1,7 +1,6 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = $estatus. "_fund_requests";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => $estatus . '_fund_requests'])
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
@@ -11,13 +10,13 @@
         <li class="breadcrumb-item">
             <a href="javascript:void(0);"><i class="ti ti-cash me-1 fs-15"></i>Fund Requests</a>
         </li>
-        <?php if($status == "Pending") :  ?>
+        @if ($status == "Pending")
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-history me-1 fs-15"></i>Pending</li>
-        <?php elseif($status == "Success") : ?>
+        @elseif ($status == "Success")
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-circle-check me-1 fs-15"></i>Completed</li>
-        <?php elseif($status == "Failed") : ?>
+        @elseif ($status == "Failed")
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-alert-circle me-1 fs-15"></i>Rejected</li>
-        <?php endif; ?>
+        @endif
     </ol>
 </nav>
 
@@ -66,11 +65,11 @@
                         <th scope="col">Remarks</th>
                         <th scope="col">Create Time</th>
                         <th scope="col">Complete Time</th>
-                        <?php  if($status == "Pending") : ?>
+                        @if ($status == "Pending")
                         <th scope="col">Actions</th>  
-                        <?php  elseif($status == "Failed") : ?>
+                        @elseif ($status == "Failed")
                         <th scope="col">Reason</th>
-                        <?php endif; ?>
+                        @endif
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -128,7 +127,6 @@ function rejectRequest(id) {
     });
 }
 
-
     function modifyRequest(id, status, reason = "") {
         Swal.fire({
             title: "Enter Transaction PIN",
@@ -168,7 +166,7 @@ function rejectRequest(id) {
                  reason : reason
              },(data) =>{
                 notify("success",data.message,() => {
-                    navigate('/admin/fund-requests/pending');
+                    navigate('{{ route('admin.fund-requests.index', ['status' => 'pending']) }}');
                 });
              }).fail((xhr) => {
                 notify("error",xhr.responseJSON.message);
@@ -185,12 +183,12 @@ function rejectRequest(id) {
     window.endDate = "";
 
     function getTransactions() {
-        var start = moment().subtract(6, "days"); // 6 days ago
-        var end = moment(); // today
+        var start = moment().subtract(6, "days");
+        var end = moment();
 
         function cb(start, end) {
             $("#reportrange span").html(start.format("MMMM D, YYYY") + " - " + end.format("MMMM D, YYYY"));
-            // renderTransactionsVolume(start, end);
+
             window.startDate = start.format("YYYY-MM-DD");
             window.endDate = end.format("YYYY-MM-DD");
             window.dataTable.DataTable().ajax.reload();
@@ -215,7 +213,6 @@ function rejectRequest(id) {
         $("#reportrange span").html(start.format("MMMM D, YYYY") + " - " + end.format("MMMM D, YYYY"));
         window.startDate = start.format("YYYY-MM-DD");
         window.endDate = end.format("YYYY-MM-DD");
-        // cb(start, end);
 
         window.dataTable = $("#dataTable").dataTable({
             bFilter: false,
@@ -225,14 +222,14 @@ function rejectRequest(id) {
             paging: true,
             ordering: false,
             ajax: {
-                url: "/api/tables/fund-requests",
+                url: "{{ route('api.tables.fund-requests') }}",
                 type: "GET",
                 data: function (d) {
                     d.searchBy = window.searchBy;
                     d.searchValue = window.searchValue;
                     d.startDate = window.startDate;
                     d.endDate = window.endDate;
-                    d.status = "<?= $status ?>";
+                    d.status = "{{ $status }}";
                 },
             },
         });
@@ -246,7 +243,7 @@ function rejectRequest(id) {
 
     function changeSearchBy(value) {
         window.searchBy = value;
-        //refresh data
+
         if (window.searchValue != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -254,7 +251,7 @@ function rejectRequest(id) {
 
     function changeSearchValue(value) {
         window.searchValue = value;
-        //refresh data
+
         if (window.searchBy != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -281,6 +278,6 @@ function rejectRequest(id) {
     }
 </style>
 
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

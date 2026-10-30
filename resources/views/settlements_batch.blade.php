@@ -1,18 +1,15 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "payin-transactions";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'payin-transactions'])
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-receipt me-1 fs-15"></i>Settlements</a>
         </li>
-        <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-receipt me-1 fs-15"></i><?= $settlement['batch_id']?></li>
+        <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-receipt me-1 fs-15"></i>{{ $settlement['batch_id'] }}</li>
     </ol>
 </nav>
-
-
 
 <div class="card">
     <div class="card-body">
@@ -45,7 +42,6 @@
                         placeholder="Search">
                 </div>
 
-
             </div>
         </div>
 
@@ -56,7 +52,7 @@
                         <th scope="col">ID</th>
                         <th scope="col">Name</th>
                         <th scope="col">Phone</th>
-                        <!--<th scope="col">Email</th>-->
+                        
                         <th scope="col">Txnid</th>
                         <th scope="col">RRN</th>
                         <th scope="col">Amount</th>
@@ -69,7 +65,7 @@
                         <th scope="col">Date Time</th>
                         <th scope="col">Txn Complete Time</th>
                         <th scope="col">Remarks</th>
-                        <!--<th scope="col">Actions</th>-->
+                        
                     </tr>
                 </thead>
                 <tbody>
@@ -78,19 +74,14 @@
             </table>
         </div>
 
-
     </div>
 </div>
-
-
-
 
 <script>
 
     window.dataTable = null;
     window.searchBy = "";
     window.searchValue = "";
-
 
     function getTransactions() {
         window.dataTable = $("#dataTable").dataTable(
@@ -107,7 +98,7 @@
                     "data": function (d) {
                         d.searchBy = window.searchBy;
                         d.searchValue = window.searchValue;
-                        d.settlementId = '<?= bin2hex(openssl_encrypt($settlement['id'], 'AES-256-CBC', env("encryption.key"), OPENSSL_RAW_DATA, substr(hash('sha256', env("encryption.key")), 0, 16))) ?>'
+                        d.settlementId = '{{ bin2hex(openssl_encrypt($settlement['id'], 'AES-256-CBC', env('encryption.key'), OPENSSL_RAW_DATA, substr(hash('sha256', env('encryption.key')), 0, 16))) }}'
                     }
                 }
             }
@@ -125,7 +116,7 @@
 
     function changeSearchBy(value) {
         window.searchBy = value;
-        //refresh data
+
         if (window.searchValue != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -134,7 +125,7 @@
 
     function changeSearchValue(value) {
         window.searchValue = value;
-        //refresh data
+
         if (window.searchBy != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -163,6 +154,6 @@
     }
 </style>
 
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

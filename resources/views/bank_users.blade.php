@@ -1,27 +1,21 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "banks";
-    echo view('header', get_defined_vars());
-}
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'banks'])
+@endif
 
-$userModel = new \App\Models\User();
-$users = $userModel->get();
-
-$bUsers = explode(",",str_replace('"',"",$bank['users']));
-
-
-
-?>
+@php
+$users = \App\Models\User::all();
+$bUsers = explode(",", str_replace('"', "", $bank['users'] ?? ''));
+@endphp
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-cash me-1 fs-15"></i>Fund Requests</a></li>
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-building-bank me-1 fs-15"></i>Banks</a></li>
-        <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-building-bank me-1 fs-15"></i><?= $bank['name'] ?></li>
+        <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-building-bank me-1 fs-15"></i>{{ $bank['name'] }}</li>
      
     </ol>
 </nav>
-
 
 <div class="row">
     <div class="col-lg-6">
@@ -33,9 +27,9 @@ $bUsers = explode(",",str_replace('"',"",$bank['users']));
                 <label class="mb-1">Bank Users</label>
                 <select id="selectedUsers" multiple class="form-control" data-placeholder="Select Users">
                      <option></option>
-                     <?php foreach($users as $user) : ?>
-                        <option <?= in_array($user['id'],$bUsers)?"selected":"" ?> value="<?= $user['id'] ?>"><?= $user['name'] ?></option>
-                     <?php endforeach; ?>
+                     @foreach ($users as $user)
+                        <option {{ in_array($user['id'], $bUsers) ? 'selected' : '' }} value="{{ $user['id'] }}">{{ $user['name'] }}</option>
+                     @endforeach
                 </select>
                 
                 <button onclick="updateUsers(this);" class="btn btn-primary float-end mt-3"><i class="ti ti-users"></i>&nbsp;&nbsp;Update</button>
@@ -58,7 +52,7 @@ $bUsers = explode(",",str_replace('"',"",$bank['users']));
        }
        let value = selecteds.join(",");
        $.post("/api/admin/update-bank-users",{
-           bank : <?= $bank['id'] ?>,
+           bank : {{ $bank['id'] }},
            users : value
        },(data) => {
            notify("success","Users Updated Successfully");
@@ -88,7 +82,6 @@ $bUsers = explode(",",str_replace('"',"",$bank['users']));
     }
 </style>
 
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

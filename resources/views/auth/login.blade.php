@@ -1,28 +1,27 @@
 <!DOCTYPE html>
-<html style="--primary-rgb: <?= e(env('colors.primary.rgb')) ?>;" lang="en" dir="ltr" data-nav-layout="vertical"
+<html style="--primary-rgb: {{ env('colors.primary.rgb') }};" lang="en" dir="ltr" data-nav-layout="vertical"
     data-vertical-style="overlay" data-theme-mode="light" data-header-styles="light" data-menu-styles="light"
     data-toggled="close">
 
 <head>
 
-    <!-- Meta Data -->
+    
     <meta charset="UTF-8">
     <meta name='viewport' content='width=device-width, initial-scale=1.0'>
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>Admin Login - <?= env("app.title") ?></title>
+    <title>Admin Login - {{ env('app.title') }}</title>
     <meta name="Description" content="">
     <meta name="Author" content="">
     <meta name="keywords" content="">
     
-    <?= view("includes/css"); ?>
+    @include('includes.css')
 
 </head>
-
 
 <body class="bg-white">
 
  <div id="loader" style="position: absolute; width: 100%; height: 100%; top: 0; left: 0; z-index: 999999;" class="bg-primary d-flex justify-content-center align-items-center flex-column gap-3">
-         <img src="<?= e(env('logo')) ?>" class="h-auto" style="filter: brightness(100); width: 20%;" alt="">
+         <img src="{{ env('logo') }}" class="h-auto" style="filter: brightness(100); width: 20%;" alt="">
          <div class="spinner-border text-light" role="status"></div>
     </div>
 
@@ -37,11 +36,11 @@
                                  <div class="text-fixed-white text-center p-5 d-flex align-items-center justify-content-start">
     <div>
         <div class="mb-2">
-            <img src="/assets/auth-feature.png" class="w-100 h-auto" alt="<?= env('app.title') ?> Login">
+            <img src="/assets/auth-feature.png" class="w-100 h-auto" alt="{{ env('app.title') }} Login">
         </div>
-        <h4 class="fw-semibold text-fixed-white">Welcome to <?= env('app.title') ?></h4>
+        <h4 class="fw-semibold text-fixed-white">Welcome to {{ env('app.title') }}</h4>
         <p class="fw-normal fs-14 op-7">
-            Sign in to your secure <strong><?= env('app.title') ?></strong> account and take control of your payments. 
+            Sign in to your secure <strong>{{ env('app.title') }}</strong> account and take control of your payments. 
             Track transactions in real time, manage settlements with ease, and access powerful insights to grow your business. 
             With UNIZFLOW, every payment is seamless, secure, and built for your success.
         </p>
@@ -62,9 +61,8 @@
                         <div class="card col-xxl-9 col-lg-9 col-md-9 col-sm-12">
                             <div class="card-body p-5">
 
-
                                 <div class="d-flex  justify-content-between align-items-center mb-4">
-                                    <img src="<?= e(env('logo')) ?>" alt="logo"
+                                    <img src="{{ env('logo') }}" alt="logo"
                                         style="width: auto; height: 70px;" class="desktop-logo">
                                     <div class="d-flex flex-column">
                                        <h6 class="text-primary mb-0">Admin Login</h6>
@@ -107,8 +105,6 @@
                                             </div>
                                         </div>
 
-
-
                                           
 
                                         <div class="col-xl-12 d-grid mt-2">
@@ -135,9 +131,8 @@
 
     </style>
 <p class="d-none">login-page-identifier</p>
-<script src="https://www.google.com/recaptcha/api.js?render=<?= env('recaptcha.key'); ?>"></script>
+<script src="https://www.google.com/recaptcha/api.js?render={{ env('recaptcha.key') }}"></script>
 <script>
-
 
 function createpassword (type, ele)  {
     document.getElementById(type).type = document.getElementById(type).type == "password" ? "text" : "password"
@@ -153,14 +148,12 @@ function createpassword (type, ele)  {
     }
 }
 
-
-
 document.querySelector("#loginBtn").onclick = async () => {
     const email = document.querySelector("#email").value.trim();
     const password = document.querySelector("#password").value.trim();
     $("#loginBtn").html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>');
     $("#loginBtn").attr("disabled",true);
-    // Validate email
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         notify("error", "Invalid email address");
@@ -169,7 +162,6 @@ document.querySelector("#loginBtn").onclick = async () => {
         return;
     }
 
-    // Validate password
     if (password.length < 6) {
         notify("error", "Password must be at least 6 characters");
         $("#loginBtn").html('Sign In');
@@ -177,10 +169,9 @@ document.querySelector("#loginBtn").onclick = async () => {
         return;
     }
 
-    // Get reCAPTCHA token
     let captchaToken = '';
     try {
-        captchaToken = await grecaptcha.execute('<?= env("recaptcha.key"); ?>', {action: 'login'});
+        captchaToken = await grecaptcha.execute('{{ env("recaptcha.key") }}', {action: 'login'});
     } catch (e) {
         console.warn("reCAPTCHA failed:", e);
     }
@@ -205,7 +196,6 @@ document.querySelector("#loginBtn").onclick = async () => {
     }
     
 
-    // Get device/browser/OS info
     const getBrowserInfo = () => {
         const ua = navigator.userAgent;
         let browser = "Unknown Browser";
@@ -227,7 +217,6 @@ document.querySelector("#loginBtn").onclick = async () => {
     const deviceData = getBrowserInfo();
     const deviceName = navigator.platform || "Unknown Platform";
 
-    // Send data via AJAX
     const payload = {
         email,
         password,
@@ -260,7 +249,7 @@ document.querySelector("#loginBtn").onclick = async () => {
             }); 
         }else if(result.status == "success" && !result.otpRequired){
             notify("success",result.message,() => {
-                location.href = "/admin/dashboard";
+                location.href = "{{ route('admin.dashboard') }}";
             });
         }
         
@@ -274,7 +263,6 @@ document.querySelector("#loginBtn").onclick = async () => {
 };
 </script>
 
-
     <style>
     
 
@@ -282,7 +270,7 @@ document.querySelector("#loginBtn").onclick = async () => {
             width: auto;
         }
 
-        /* css for devices width less than 768px */
+        
         @media screen and (max-width: 768px) {
             .col-sm-0 {
                 display: none !important;
@@ -295,7 +283,7 @@ document.querySelector("#loginBtn").onclick = async () => {
         }
         
         .form-control{
-            /*padding: 12px 20px;*/
+            
             border-radius: 13px;
             font-size: 15px;
         }
@@ -330,9 +318,7 @@ document.querySelector("#loginBtn").onclick = async () => {
         }
     </style>
 
-
-    <?php echo view('includes/js', get_defined_vars()); ?>
-
+    @include('includes.js')
 
 </body>
 

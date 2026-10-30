@@ -5,44 +5,45 @@ namespace App\Http\Controllers;
 use App\Libraries\Recaptcha;
 use App\Libraries\Validators;
 use App\Models\Admin;
+use App\Models\Login;
+use App\Models\LoginAttempt;
+use App\Models\LoginBrowser;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 class Auth extends BaseController
 {
     private const OTP_EXPIRY_SECONDS = 300;
     private const OTP_RESEND_DELAY = 120;
-    public function login()
+
+    public function login(Request $request)
     {
-        $session = session();
-        if ($session->get('admin_id')) {
-            return redirect('/admin/dashboard');
+        if ($request->session()->has('admin_id')) {
+            return redirect()->route('admin.dashboard');
         }
-        return view('auth/login');
+        return view('auth.login');
     }
 
-    public function login_admin()
+    public function login_admin(Request $request)
     {
-        $session = session();
-        $input = (object) json_decode(request()->getContent());
-        // $result = Recaptcha::verifyV3Captcha($input->captcha);
-        // if (!($result->success && $result->score > 0.7)) {
-        //     return response()->json([
-        //         'status' => 'error',
-        //         'message' => 'Unable to resolve captcha.',
-        //     ], 401);
-        // }
+        $session = $request->session();
+        $input = (object) $request->all();
 
-        $email = trim($input->email);
-        $password = trim($input->password);
+        $email = trim($input->email ?? '');
+        $password = trim($input->password ?? '');
         if (app()->environment('local')) {
-            $lat = $input->location->lat ?? 26.9124;
-            $lon = $input->location->lon ?? 75.7873;
+            $lat = $input->location['lat'] ?? $input->location->lat ?? 26.9124;
+            $lon = $input->location['lon'] ?? $input->location->lon ?? 75.7873;
         } else {
-            $lat = $input->location->lat ?? null;
-            $lon = $input->location->lon ?? null;
+            $lat = $input->location['lat'] ?? $input->location->lat ?? null;
+            $lon = $input->location['lon'] ?? $input->location->lon ?? null;
         }
-        $browser = $input->browser;
-        $device = $input->device;
-        $os = $input->os;
+        $browser = $input->browser ?? '';
+        $device = $input->device ?? '';
+        $os = $input->os ?? '';
 
         if (!Validators::email($email)) {
             return response()->json([
@@ -72,16 +73,15 @@ class Auth extends BaseController
             ], 400);
         }
 
-        $admin = new Admin();
-        $adminData = $admin->where('email', strtolower($email))->first();
+        $adminData = Admin::where('email', strtolower($email))->first();
+        $loginAttemptId = null;
+
         if ($adminData) {
+            $loginAttemptCount = LoginAttempt::where('admin_id', $adminData->id)
+                ->where('created_at', '>=', now()->subMinutes(15))
+                ->where('verified', -1)
+                ->count();
 
-            $loginAttempt = new \App\Models\LoginAttempt();
-            $loginAttempt->where('admin_id', $adminData['id'])
-                ->where('created_at', '>=', date("Y-m-d H:i:s", strtotime("-15 minutes")))
-                ->where('verified', -1);
-
-            $loginAttemptCount = $loginAttempt->count();
             if ($loginAttemptCount >= 3) {
                 return response()->json([
                     'status' => 'error',
@@ -89,27 +89,26 @@ class Auth extends BaseController
                 ], 429);
             }
 
-            $loginAttempt = new \App\Models\LoginAttempt();
-            $createdAttempt = $loginAttempt->create([
-                "ip" => request()->ip(),
+            $createdAttempt = LoginAttempt::create([
+                "ip" => $request->ip(),
                 "browser" => $browser,
                 "device" => $device,
                 "os" => $os,
                 "lat" => $lat,
                 "log" => $lon,
-                "session_id" => session_id(),
-                "admin_id" => $adminData['id'],
-                "verified" => 0
+                "session_id" => $session->getId(),
+                "admin_id" => $adminData->id,
+                "verified" => 0,
             ]);
 
             $loginAttemptId = $createdAttempt->id;
         }
 
-        if (!$adminData || !password_verify($password, $adminData['password'])) {
-            if ($adminData) {
-                $loginAttempt->where('id', $loginAttemptId)->update([
+        if (!$adminData || !Hash::check($password, $adminData->password)) {
+            if ($adminData && $loginAttemptId) {
+                LoginAttempt::where('id', $loginAttemptId)->update([
                     "verified" => -1,
-                    "admin_id" => $adminData['id']
+                    "admin_id" => $adminData->id,
                 ]);
             }
 
@@ -119,49 +118,46 @@ class Auth extends BaseController
             ], 401);
         }
 
-        $loginAttempt->where('id', $loginAttemptId)->update([
+        LoginAttempt::where('id', $loginAttemptId)->update([
             "verified" => 1,
-            "admin_id" => $adminData['id']
+            "admin_id" => $adminData->id,
         ]);
 
-        if ($adminData['active'] == 0) {
+        if ($adminData->active == 0) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Your account is inactive. Please contact support.',
             ], 403);
         }
 
-        $session_id = session_id();
-        $login = new \App\Models\Login();
-        $login->create([
-            "admin_id" => $adminData['id'],
-            "ip" => request()->ip(),
+        $sessionId = $session->getId();
+        Login::create([
+            "admin_id" => $adminData->id,
+            "ip" => $request->ip(),
             "browser" => $browser,
             "device" => $device,
             "os" => $os,
             "lat" => $lat,
             "lon" => $lon,
-            "session_id" => $session_id,
+            "session_id" => $sessionId,
             "verified" => 0,
             "email_verified" => 0,
-            "phone_verified" => 0
+            "phone_verified" => 0,
         ]);
 
-        $browserToken = request()->cookie('browser_token');
-        if (strlen($browserToken) > 5) {
-            $loginBrowserModel = new \App\Models\LoginBrowser();
-            $browser = $loginBrowserModel->findBrowserToken($browserToken);
-            if (isset($browser['admin_id']) && $browser['admin_id'] == $adminData['id']) {
-                $login->where("session_id", $session_id)->update([
+        $browserToken = $request->cookie('browser_token');
+        if (strlen($browserToken ?? '') > 5) {
+            $browser = LoginBrowser::findBrowserToken($browserToken);
+            if (isset($browser['admin_id']) && $browser['admin_id'] == $adminData->id) {
+                Login::where("session_id", $sessionId)->update([
                     "phone_verified" => $browser['phone_verified'],
-                    "email_verified" => $browser['email_verified']
+                    "email_verified" => $browser['email_verified'],
                 ]);
 
-                session()->put('admin_id', $adminData['id']);
+                $session->put('admin_id', $adminData->id);
 
-                $admin = new \App\Models\Admin();
-                $admin->where('id', $adminData['id'])->update([
-                    "current_session_id" => session_id()
+                Admin::where('id', $adminData->id)->update([
+                    "current_session_id" => $sessionId,
                 ]);
 
                 return response()->json([
@@ -172,16 +168,16 @@ class Auth extends BaseController
             }
         }
 
-        if(app()->environment('local')) {
+        if (app()->environment('local')) {
             $emailOtp = 654321;
         } else {
             $emailOtp = random_int(111111, 999999);
         }
         $session->put('email_otp', $emailOtp);
-        $session->put('otp_expires', time() + self::OTP_EXPIRY_SECONDS);
+        $session->put('otp_expires', now()->addSeconds(self::OTP_EXPIRY_SECONDS)->timestamp);
 
-        \Illuminate\Support\Facades\Mail::raw("Your OTP code for login is: $emailOtp", function ($message) use ($adminData) {
-            $message->to($adminData['email'])
+        Mail::raw("Your OTP code for login is: $emailOtp", function ($message) use ($adminData) {
+            $message->to($adminData->email)
                 ->subject('Your OTP for Login');
         });
 
@@ -192,37 +188,38 @@ class Auth extends BaseController
         ], 200);
     }
 
-    public function verify_login()
+    public function verify_login(Request $request)
     {
-        $session = session();
-        $login = new \App\Models\Login();
-        $loginLog = $login->where('session_id', session_id())->orderBy('id', 'DESC')->where('verified', 0)
-            ->where('created_at', '>=', date("Y-m-d H:i:s", strtotime("-15 minutes")))
+        $sessionId = $request->session()->getId();
+        $loginLog = Login::where('session_id', $sessionId)
+            ->orderBy('id', 'DESC')
+            ->where('verified', 0)
+            ->where('created_at', '>=', now()->subMinutes(15))
             ->first();
+
         if (!$loginLog) {
-            return redirect('/admin/login');
+            return redirect()->route('admin.login');
         }
-        $admin = new Admin();
-        $adminData = $admin->where('id', $loginLog['admin_id'])->first();
-        return view('auth/verify_login', ["email" => $adminData['email'], "phone" => $adminData['phone']]);
+
+        $adminData = Admin::find($loginLog->admin_id);
+        return view('auth.verify_login', [
+            "email" => $adminData->email ?? '',
+            "phone" => $adminData->phone ?? '',
+        ]);
     }
 
-    public function verify_login_otp()
+    public function verify_login_otp(Request $request)
     {
-        $input = (object) json_decode(request()->getContent());
-        // $result = Recaptcha::verifyV3Captcha($input->captcha);
-        // if (!($result->success && $result->score > 0.7)) {
-        //     return response()->json([
-        //         'status' => 'error',
-        //         'message' => 'Unable to resolve captcha.',
-        //     ], 401);
-        // }
-        $session = session();
+        $session = $request->session();
+        $input = (object) $request->all();
+        $sessionId = $session->getId();
 
-        $login = new \App\Models\Login();
-        $loginLog = $login->where('session_id', session_id())->orderBy('id', 'DESC')->where('verified', 0)
-            ->where('created_at', '>=', date("Y-m-d H:i:s", strtotime("-15 minutes")))
+        $loginLog = Login::where('session_id', $sessionId)
+            ->orderBy('id', 'DESC')
+            ->where('verified', 0)
+            ->where('created_at', '>=', now()->subMinutes(15))
             ->first();
+
         if (!$loginLog) {
             return response()->json([
                 'status' => 'error',
@@ -237,86 +234,81 @@ class Auth extends BaseController
             ], 401);
         }
 
-
-        if (
-            !ctype_digit($input->otp) || strlen($input->otp) != 6
-        ) {
+        $otp = $input->otp ?? '';
+        if (!ctype_digit((string) $otp) || strlen((string) $otp) != 6) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Please Enter valid OTP',
             ], 400);
         }
-        if ($session->get("otp_expires") < time()) {
+
+        if ($session->get("otp_expires") < now()->timestamp) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'OTP Expired. Please resend OTP.',
             ], 400);
         }
-        if ($input->otp != $session->get("email_otp")) {
+
+        if ($otp != $session->get("email_otp")) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Please Enter valid OTP',
             ], 400);
         }
 
-        $emailVerified = $input->otp == $session->get("email_otp") ? 1 : 0;
+        $emailVerified = ($otp == $session->get("email_otp")) ? 1 : 0;
         $phoneVerified = 0;
 
-
-        $login->where('id', $loginLog['id'])->update([
+        Login::where('id', $loginLog->id)->update([
             "verified" => 1,
             "email_verified" => $emailVerified,
-            "phone_verified" => $phoneVerified
+            "phone_verified" => $phoneVerified,
         ]);
 
-        $admin = new \App\Models\Admin();
-        $admin->where('id', $loginLog['admin_id'])->update([
-            "current_session_id" => session_id()
+        Admin::where('id', $loginLog->admin_id)->update([
+            "current_session_id" => $sessionId,
         ]);
 
-        $loginBrowserModel = new \App\Models\LoginBrowser();
-        $browserToken = substr(bin2hex(random_bytes(30)), 0, 30);
-        $loginBrowserModel->create([
-            "admin_id" => $loginLog['admin_id'],
+        $browserToken = Str::random(30);
+        LoginBrowser::create([
+            "admin_id" => $loginLog->admin_id,
             "browser_token" => $browserToken,
             "phone_verified" => $phoneVerified,
-            "email_verified" => $emailVerified
+            "email_verified" => $emailVerified,
         ]);
 
-        session()->put('admin_id', $loginLog['admin_id']);
-        session()->forget("email_otp");
-        session()->forget("phone_otp");
-        session()->forget("otp_expires");
+        $session->put('admin_id', $loginLog->admin_id);
+        $session->forget("email_otp");
+        $session->forget("phone_otp");
+        $session->forget("otp_expires");
+
         return response()->json([
             'status' => 'success',
             'message' => 'Login Successful',
         ], 200)->cookie("browser_token", $browserToken, 1440, "/", null, true, true);
     }
 
-    public function forgot_password()
+    public function forgot_password(Request $request)
     {
-        $session = session();
-        if ($session->get('admin_id')) {
-            return redirect('/admin/dashboard');
+        if ($request->session()->has('admin_id')) {
+            return redirect()->route('admin.dashboard');
         }
-        return view('auth/forgot_password');
+        return view('auth.forgot_password');
     }
 
-    public function logout()
+    public function logout(Request $request)
     {
-        $session = session();
-        $session->flush();
-        return redirect('/admin/login');
+        $request->session()->flush();
+        return redirect()->route('admin.login');
     }
 
-    public function ad_login()
+    public function ad_login(Request $request)
     {
-        $adToken = request()->query('ad_token');
+        $adToken = $request->query('ad_token');
         if (!empty($adToken) && strlen($adToken) > 10) {
-            $userModel = new \App\Models\User();
-            $user = $userModel->where("ad_token", $adToken)->first();
+            $user = User::where("ad_token", $adToken)->first();
             if ($user) {
-                $partnerUrl = env("partnerURL") ?? env("frontendURL") ?? "http://localhost:8001/";
+                $partnerUrl = config('app.partner_url', env("partnerURL") ?? env("frontendURL") ?? "http://localhost:8001/");
                 $parsedPort = parse_url($partnerUrl, PHP_URL_PORT);
                 $parsedHost = parse_url($partnerUrl, PHP_URL_HOST);
                 if (($parsedHost === 'localhost' || $parsedHost === '127.0.0.1') && ($parsedPort == 8000 || empty($parsedPort))) {

@@ -1,21 +1,19 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = $status."_transactions";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => $status . '_transactions'])
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-history me-1 fs-15"></i>Hold Transactions</a>
         </li>
-        <?php if($status == "hold") : ?>
+        @if ($status == "hold")
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-circle-minus me-1 fs-15"></i>On Hold Transactions</li>
-        <?php else : ?>
+        @else
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-circle-check me-1 fs-15"></i>Released Transactions</li>
-        <?php endif; ?>
+        @endif
     </ol>
 </nav>
-
 
 <div class="card">
     <div class="card-body">
@@ -31,7 +29,7 @@
                     <option value="50">50</option>
                     <option value="100">100</option>
                     <option value="500">500</option>
-                    <!--<option value="-1">All</option>-->
+                    
                 </select>
                 </div>
             </div>
@@ -42,9 +40,9 @@
                    <label class="mb-1">User</label>
                     <select onchange="changeUser(this.value);" class="form-select" id="user">
                     <option value="">All</option>
-                    <?php foreach((new \App\Models\User())->get() as $user) : ?>
-                       <option value="<?= $user['id']; ?>"><?= $user['name']; ?></option>
-                    <?php endforeach; ?>
+                    @foreach (\App\Models\User::all() as $user)
+                       <option value="{{ $user->id }}">{{ $user->name }}</option>
+                    @endforeach
                     </select>
                 </div>
             </div>
@@ -93,11 +91,11 @@
                         <th scope="col">Status</th>
                         <th scope="col">Remarks</th>
                         <th scope="col">Hold Date</th>
-                        <?php if($status == "hold") : ?>
+                        @if ($status == "hold")
                         <th scope="col">Actions</th>
-                        <?php else : ?>
+                        @else
                         <th scope="col">Released Date</th>
-                        <?php endif; ?>
+                        @endif
                     </tr>
                 </thead>
                 <tbody>
@@ -106,10 +104,8 @@
             </table>
         </div>
 
-
     </div>
 </div>
-
 
 <script>
 
@@ -117,7 +113,6 @@
     window.searchBy = "";
     window.searchValue = "";
     window.userId = "";
-
 
     function getTransactions() {
         window.dataTable = $("#dataTable").dataTable(
@@ -140,7 +135,7 @@
                         d.searchBy = window.searchBy;
                         d.searchValue = window.searchValue;
                         d.userId = window.userId;
-                        d.status = '<?= $status ?>';
+                        d.status = '{{ $status }}';
                     }
                 }
             }
@@ -162,7 +157,7 @@
 
     function changeSearchBy(value) {
         window.searchBy = value;
-        //refresh data
+
         if (window.searchValue != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -171,7 +166,7 @@
 
     function changeSearchValue(value) {
         window.searchValue = value;
-        //refresh data
+
         if (window.searchBy != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -249,7 +244,6 @@
     }
 </style>
 
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

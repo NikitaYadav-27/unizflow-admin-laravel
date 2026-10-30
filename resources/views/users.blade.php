@@ -1,27 +1,14 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "$status-users";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => "$status-users"] )
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-users me-1 fs-15"></i>Users</a></li>
-        <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-<?php 
-         
-         if($status=="active"){
-             echo "circle-check";
-         }elseif($status == "inactive"){
-             echo "circle-minus";
-         }else{
-             echo "lock";
-         }
-        
-        ?> me-1 fs-15"></i><?= ucwords($status); ?> Users</li>
+        <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-@if ($status == 'active')circle-check@elseif ($status == 'inactive')circle-minus@else lock@endif me-1 fs-15"></i>{{ ucwords($status) }} Users</li>
     </ol>
 </nav>
-
-
 
 <div class="card">
     <div class="card-body">
@@ -70,17 +57,17 @@
                     <div style="display: none;" id="payinProviders">
                     <select class="form-select"  data-placeholder="Select Payin Provider" onchange="changeValue(this.value,'payinProviders')">
                         <option></option>
-                        <?php foreach((new \App\Models\Providers())->where('type', 'payin')->get() as $provider) : ?>
-                          <option value="<?= $provider['id']; ?>"><?= $provider['name']; ?></option>
-                        <?php endforeach; ?>
+                        @foreach (\App\Models\Providers::where('type', 'payin')->get() as $provider)
+                          <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+                        @endforeach
                     </select>
                     </div>
                     <div style="display: none;" id="payoutProviders">
                     <select class="form-select"  data-placeholder="Select Payout Provider" onchange="changeValue(this.value,'payoutProviders')">
                         <option></option>
-                         <?php foreach((new \App\Models\Providers())->where('type', 'payout')->get() as $provider) : ?>
-                          <option value="<?= $provider['id']; ?>"><?= $provider['name']; ?></option>
-                        <?php endforeach; ?>
+                         @foreach (\App\Models\Providers::where('type', 'payout')->get() as $provider)
+                          <option value="{{ $provider->id }}">{{ $provider->name }}</option>
+                         @endforeach
                     </select>
                     </div>
                     <div style="display: none;" id="status">
@@ -94,7 +81,6 @@
                      </div>
                 </div>
                 
-
 
             </div>
         </div>
@@ -126,7 +112,6 @@
             </table>
         </div>
 
-
     </div>
 </div>
 
@@ -135,7 +120,6 @@
         display: none !important;
     }
 </style>
-
 
 <script>
 
@@ -240,7 +224,7 @@
            uid : uid
        },(data) => {
            notify("success","Session Generated Successfully !",() => {
-               window.open('<?= env("frontendURL"); ?>auth/login/token?ad_token='+data.token);
+               window.open('{{ env("frontendURL") }}auth/login/token?ad_token='+data.token);
                btn.disabled = false;
                btn.innerHTML = '<i class="ti ti-login"></i>';
            });
@@ -253,7 +237,7 @@
    function lockSwitch(user_id){
       $.post("/api/users/update-lock-switch",{ user_id : user_id },(data) => {
            notify("success",data.message,() => {
-              navigate('<?= $status == "active"?"/admin/users/active":"/admin/users/inactive"?>');
+              navigate('{{ $status == "active" ? "/admin/users/active" : "/admin/users/inactive" }}');
            });
        }).fail((xhr) => {
            let error = xhr.responseJSON.message;
@@ -265,7 +249,7 @@
        $.post("/api/users/update-switch",{ user_id : user_id , service : service, value : value?1:0 },(data) => {
            notify("success",data.message,() => {
                if(service == "active"){
-                   navigate('<?= $status == "active"?"/admin/users/active":"/admin/users/inactive"?>');
+                   navigate('{{ $status == "active" ? "/admin/users/active" : "/admin/users/inactive" }}');
                }
            });
        }).fail((xhr) => {
@@ -278,7 +262,6 @@
     window.searchBy = "";
     window.searchValue = "";
 
-
     function getUsers() {
         window.dataTable = $("#dataTable").dataTable(
             {
@@ -290,7 +273,7 @@
                 "ordering" : false,
                 "pageLength": 100,
                 "ajax": {
-                    "url": "/api/tables/users?status=<?= $status ?>",
+                    "url": "/api/tables/users?status={{ $status }}",
                     "type": "GET",
                     "data": function (d) {
                         d.searchBy = window.searchBy;
@@ -309,7 +292,7 @@
 
     function changeSearchBy(value) {
         window.searchBy = value;
-        //refresh data
+
         if (window.searchValue != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -318,7 +301,7 @@
 
     function changeSearchValue(value) {
         window.searchValue = value;
-        //refresh data
+
         if (window.searchBy != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -347,7 +330,6 @@
     }
 </style>
 
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

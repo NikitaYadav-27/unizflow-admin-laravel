@@ -1,11 +1,10 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "settlement_packages";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'settlement_packages'])
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
-        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('/admin/dashboard')"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
+        <li class="breadcrumb-item"><a href="javascript:void(0);" onclick="navigate('{{ route('admin.dashboard') }}')"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-receipt me-1 fs-15"></i>Settlements</a></li>
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-box me-1 fs-15"></i>Settlement Packages</li>
     </ol>
@@ -17,7 +16,7 @@
             <i class="ti ti-box me-2 text-primary fs-18"></i>Settlement Packages
         </div>
         <div>
-            <button onclick="navigate('/admin/settlement-packages/add')" class="btn btn-primary btn-sm">
+            <button onclick="navigate('{{ route('admin.settlement-packages.add') }}')" class="btn btn-primary btn-sm">
                 <i class="ti ti-circle-plus me-1"></i>Add Settlement Package
             </button>
         </div>
@@ -76,7 +75,7 @@
             "paging": true,
             "ordering": false,
             "ajax": {
-                "url": "/api/tables/settlement-packages",
+                "url": "{{ route('api.tables.settlement-packages') }}",
                 "type": "GET",
                 "data": function (d) {
                     d.searchValue = $("#searchValue").val() || "";
@@ -116,7 +115,7 @@
         }).then((result) => {
             if (result.isConfirmed) {
                 $.ajax({
-                    url: '/api/admin/settlement-package/delete',
+                    url: '{{ route('admin.settlement-packages.delete') }}',
                     type: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({ package_id: encId }),
@@ -147,6 +146,6 @@
     initSettlementPackagesTable();
 </script>
 
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

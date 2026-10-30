@@ -143,15 +143,7 @@
         });
     }
     
-    // function downloadReceipt()
-    // {
-    //     html2canvas(document.querySelector("#receipt")).then(canvas => {
-    //       const link = document.createElement('a');
-    //       link.download = 'transaction_receipt.png';
-    //       link.href = canvas.toDataURL();
-    //       link.click();
-    //   });
-    // }
+
 </script>
 <style>
     .receipt-container {

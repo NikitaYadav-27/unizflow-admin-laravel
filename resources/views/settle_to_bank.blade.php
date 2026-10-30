@@ -1,17 +1,15 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "pending_settlements";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'pending_settlements'])
+@endif ?>
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-receipt me-1 fs-15"></i>Settlements</a></li>
-        <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-receipt me-1 fs-15"></i># <?= $settlement['txnid']?></a></li>
+        <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-receipt me-1 fs-15"></i># {{ $settlement['txnid'] }}</a></li>
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-building-bank me-1 fs-15"></i>Settle to Bank</li>
     </ol>
 </nav>
-
 
 <div class="row">
     <div class="col-lg-4">
@@ -20,14 +18,11 @@
                 <h6 class="card-title"><i class="ti ti-building-bank me-1 fs-15"></i>&nbsp;&nbsp;Settle to Bank</h6>
             </div>
            <div class="card-body">
-               <form action="/api/admin/settlements/settle-to-bank" method="POST" novalidate>
+               <form action="{{ route('admin.settlements.settle-to-bank') }}" method="POST" novalidate>
                    
                   
-                         <input type="hidden" name="id" value="<?= $settlement_id ?>">
-                         <?php 
-                         $bankAccount = \Illuminate\Support\Facades\DB::connection()->table('users_bank')->where('status', 'Approved')->where('user_id', $settlement['user_id'])->get()->first();
-                        
-                         ?>
+                         <input type="hidden" name="id" value="{{ $settlement_id }}">
+                         @php $bankAccount = \Illuminate\Support\Facades\DB::table('users_bank')->where('status', 'Approved')->where('user_id', $settlement['user_id'])->first(); @endphp
                          
                        
                           
@@ -37,30 +32,30 @@
                             <tr>
                                 <th>Name</th>
                                 <th class="px-2">:</th>
-                                <td><?= $bankAccount['name'] ?? "NA"; ?></td>
+                                <td>{{ $bankAccount->name ?? $bankAccount['name'] ?? 'NA' }}</td>
                             </tr>
                             <tr>
                                 <th>Account</th>
                                 <th class="px-2">:</th>
-                                <td><?= $bankAccount['account_number'] ?? "NA"; ?></td>
+                                <td>{{ $bankAccount->account_number ?? $bankAccount['account_number'] ?? 'NA' }}</td>
                             </tr>
                             
                             <tr>
                                 <th>IFSC</th>
                                 <th class="px-2">:</th>
-                                <td><?= $bankAccount['account_ifsc'] ?? "NA"; ?></td>
+                                <td>{{ $bankAccount->account_ifsc ?? $bankAccount['account_ifsc'] ?? 'NA' }}</td>
                             </tr>
                             
                             <tr>
                                 <th>Bank</th>
                                 <th class="px-2">:</th>
-                                <td><?= $bankAccount['bank_name'] ?? "NA"; ?></td>
+                                <td>{{ $bankAccount->bank_name ?? $bankAccount['bank_name'] ?? 'NA' }}</td>
                             </tr>
                             
                             <tr>
                                 <th>Branch</th>
                                 <th class="px-2">:</th>
-                                <td><?= $bankAccount['branch'] ?? "NA"; ?></td>
+                                <td>{{ $bankAccount->branch ?? $bankAccount['branch'] ?? 'NA' }}</td>
                             </tr>
                         </table>
                     </div>
@@ -69,7 +64,7 @@
                    
                    <div class="form-group mb-2">
                        <label class="mb-1">Amount <span class="text-primary">*</span></label>
-                       <input class="form-control" value="₹ <?= $settlement['net_amount'] ?>" disabled>
+                       <input class="form-control" value="₹ {{ $settlement['net_amount'] }}" disabled>
                    </div>
                  
                    <div class="form-group mb-2">
@@ -92,10 +87,6 @@
     </div>
 </div>
 
-
-
-
-
 <script>
 
    function onRequestResponse(response){
@@ -110,8 +101,6 @@
 
 </script>
 
-
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif

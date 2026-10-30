@@ -1,7 +1,6 @@
-<?php if (!isset($_GET['turbo'])) {
-    $page = "payin-transactions";
-    echo view('header', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('header', ['page' => 'payin-transactions'])
+@endif
 
 <nav aria-label="breadcrumb" class="my-4">
     <ol class="breadcrumb breadcrumb-style2 mb-0">
@@ -11,8 +10,6 @@
         <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-arrows-left-right me-1 fs-15"></i>Transactions</li>
     </ol>
 </nav>
-
-
 
 <div class="card">
     <div class="card-body">
@@ -41,7 +38,6 @@
                         placeholder="Search">
                 </div>
 
-
             </div>
         </div>
 
@@ -65,7 +61,7 @@
                         <th scope="col">Date Time</th>
                         <th scope="col">Txn Complete Time</th>
                         <th scope="col">Remarks</th>
-                        <!--<th scope="col">Actions</th>-->
+                        
                     </tr>
                 </thead>
                 <tbody>
@@ -74,19 +70,14 @@
             </table>
         </div>
 
-
     </div>
 </div>
-
-
-
 
 <script>
 
     window.dataTable = null;
     window.searchBy = "";
     window.searchValue = "";
-
 
     function getTransactions() {
         window.dataTable = $("#dataTable").dataTable(
@@ -117,7 +108,7 @@
 
     function changeSearchBy(value) {
         window.searchBy = value;
-        //refresh data
+
         if (window.searchValue != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -126,7 +117,7 @@
 
     function changeSearchValue(value) {
         window.searchValue = value;
-        //refresh data
+
         if (window.searchBy != "") {
             window.dataTable.DataTable().ajax.reload();
         }
@@ -155,7 +146,6 @@
     }
 </style>
 
-
-<?php if (!isset($_GET['turbo'])) {
-    echo view('footer', get_defined_vars());
-} ?>
+@if (!request()->has('turbo'))
+    @include('footer')
+@endif
