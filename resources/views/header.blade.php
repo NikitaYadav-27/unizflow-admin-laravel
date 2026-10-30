@@ -521,6 +521,14 @@
                                 <span class="side-menu__label">Admin Profit</span>
                             </a>
                         </li>
+
+                        <li class="slide">
+                            <a onclick="navigate('/admin/accounting/ledger'); activeNavigation(this);"
+                                class="side-menu__item {{ ($page ?? '') == 'accounting_ledger' ? 'active' : '' }}">
+                                <i class="ti ti-calculator side-menu__icon"></i>
+                                <span class="side-menu__label">Accounting Ledger</span>
+                            </a>
+                        </li>
                         
 
                         

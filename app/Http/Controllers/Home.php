@@ -28,6 +28,7 @@ use App\Models\SettlementPackage;
 use App\Models\SettlementPackageSlot;
 use App\Models\Wallet;
 use App\Models\ErrorLog;
+use App\Models\AccountLedger;
 
 class Home extends BaseController
 {
@@ -2071,6 +2072,24 @@ class Home extends BaseController
         return view('error_logs', [
             'admin' => $admin,
             'providers' => $providers
+        ]);
+    }
+
+    public function accounting_ledger(Request $request)
+    {
+        if (!session('admin_id')) {
+            return redirect()->route('admin.login');
+        }
+
+        $admin = Admin::find(session('admin_id'));
+        $providers = Providers::all();
+        $panels = AccountLedger::select('panel')->distinct()->pluck('panel');
+
+        return view('accounting_ledger', [
+            'admin' => $admin,
+            'providers' => $providers,
+            'panels' => $panels,
+            'page' => 'accounting_ledger',
         ]);
     }
 }

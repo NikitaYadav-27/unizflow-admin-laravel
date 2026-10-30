@@ -157,17 +157,15 @@ Route::post('/api/admin/accounts/transaction/delete', [Home::class, 'delete_acco
 Route::get('/admin/accounts/transaction/update/{id}', [Home::class, 'edit_account_transaction']);
 Route::post('/api/admin/accounts/transactions/update', [Home::class, 'update_account_transaction']);
 
-Route::get('/api/tables/account_ledger', [Tables::class, 'accounts_ledger']);
+Route::get('/api/tables/account_ledger', [Tables::class, 'accounting_ledger']);
+Route::get('/api/tables/accounting_ledger', [Tables::class, 'accounting_ledger'])->name('api.tables.accounting_ledger');
 
-Route::get('/admin/accounts/ledger/{id}', [Home::class, 'accounts_ledger']);
+Route::get('/admin/accounting/ledger', [Home::class, 'accounting_ledger'])->name('admin.accounting.ledger');
+Route::get('/admin/accounts/ledger/{id?}', [Home::class, 'accounting_ledger']);
+Route::get('/admin/accounts/auto/commission', [Home::class, 'accounting_ledger']);
 
-Route::get('/admin/accounts/auto/commission', [Home::class, 'auto_commission']);
-Route::get('/admin/accounts/auto/commission/add', [Home::class, 'add_auto_commission']);
-Route::post('/api/admin/accounts/auto/commission/add', [Home::class, 'create_auto_commission']);
-
-Route::get('/api/tables/accounts_auto_commission', [Tables::class, 'accounts_auto_commission']);
-
-Route::post('/admin/accounts/auto/commission/delete', [Home::class, 'delete_auto_commission']);
+Route::get('/api/admin/accounting/export/excel', [Tables::class, 'export_accounting_ledger_excel'])->name('api.admin.accounting.export.excel');
+Route::get('/api/admin/accounting/export/pdf', [Tables::class, 'export_accounting_ledger_pdf'])->name('api.admin.accounting.export.pdf');
 
 // Route::get('/api/internal/auto_commission', [AutoCommission::class, 't00_02']);
 

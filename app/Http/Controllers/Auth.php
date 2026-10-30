@@ -82,7 +82,7 @@ class Auth extends BaseController
                 ->where('verified', -1)
                 ->count();
 
-            if ($loginAttemptCount >= 3) {
+            if ($loginAttemptCount >= 5) {
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Too many login attempts. Please try again after 15 Minutes.',
@@ -122,6 +122,10 @@ class Auth extends BaseController
             "verified" => 1,
             "admin_id" => $adminData->id,
         ]);
+
+        LoginAttempt::where('admin_id', $adminData->id)
+            ->where('verified', -1)
+            ->update(["verified" => 2]);
 
         if ($adminData->active == 0) {
             return response()->json([
