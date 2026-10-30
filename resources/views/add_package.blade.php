@@ -22,7 +22,7 @@
                <form action="/api/admin/package/add" method="POST">
                    <div class="form-group">
                        <label class="mb-1">Package Name <span class="text-primary">*</span></label>
-                       <input type="text" name="name" required class="form-control" placeholder="Enter Name">
+                       <input type="text" name="name"   class="form-control" placeholder="Enter Name">
                    </div>
                    
                    <button type="submit" class="btn btn-primary mt-3 float-end btn-sm"><i class="ti ti-circle-plus"></i>&nbsp;&nbsp;Add Package</button>

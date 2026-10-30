@@ -118,7 +118,6 @@
                         <th scope="col">Today's Collection</th>
                         <th scope="col">Settlement</th>
                         <th scope="col">Actions</th>
-                        <!--<th scope="col">Actions</th>-->
                     </tr>
                 </thead>
                 <tbody>

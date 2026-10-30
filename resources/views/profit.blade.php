@@ -20,7 +20,7 @@
 <!-- Summary Metrics Cards -->
 <div class="row mb-3 g-3">
     <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
-        <div class="card custom-card border-0 shadow-sm h-100 mb-0" style="background: linear-gradient(135deg, rgba(32, 143, 132, 0.08) 0%, rgba(32, 143, 132, 0.02) 100%); border-left: 4px solid #208f84 !important;">
+        <div class="card custom-card border-0 shadow-sm h-100 mb-0" style="background: linear-gradient(135deg, rgba(32, 143, 132, 0.08) 0%, rgba(32, 143, 132, 0.02) 100%);">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
@@ -37,7 +37,7 @@
     </div>
 
     <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
-        <div class="card custom-card border-0 shadow-sm h-100 mb-0" style="background: linear-gradient(135deg, rgba(13, 110, 253, 0.08) 0%, rgba(13, 110, 253, 0.02) 100%); border-left: 4px solid #0d6efd !important;">
+        <div class="card custom-card border-0 shadow-sm h-100 mb-0" style="background: linear-gradient(135deg, rgba(13, 110, 253, 0.08) 0%, rgba(13, 110, 253, 0.02) 100%);">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
@@ -54,7 +54,7 @@
     </div>
 
     <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
-        <div class="card custom-card border-0 shadow-sm h-100 mb-0" style="background: linear-gradient(135deg, rgba(255, 149, 0, 0.08) 0%, rgba(255, 149, 0, 0.02) 100%); border-left: 4px solid #ff9500 !important;">
+        <div class="card custom-card border-0 shadow-sm h-100 mb-0" style="background: linear-gradient(135deg, rgba(255, 149, 0, 0.08) 0%, rgba(255, 149, 0, 0.02) 100%);">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
@@ -71,7 +71,7 @@
     </div>
 
     <div class="col-xxl-3 col-xl-3 col-md-6 col-12">
-        <div class="card custom-card border-0 shadow-sm h-100 mb-0" style="background: linear-gradient(135deg, rgba(25, 135, 84, 0.08) 0%, rgba(25, 135, 84, 0.02) 100%); border-left: 4px solid #198754 !important;">
+        <div class="card custom-card border-0 shadow-sm h-100 mb-0" style="background: linear-gradient(135deg, rgba(25, 135, 84, 0.08) 0%, rgba(25, 135, 84, 0.02) 100%);">
             <div class="card-body">
                 <div class="d-flex align-items-center justify-content-between">
                     <div>
