@@ -6,7 +6,7 @@
     <ol class="breadcrumb breadcrumb-style2 mb-0">
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-home me-1 fs-15"></i>Home</a></li>
         <li class="breadcrumb-item"><a href="javascript:void(0);"><i class="ti ti-users me-1 fs-15"></i>Users</a></li>
-        <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-@if ($status == 'active')circle-check@elseif ($status == 'inactive')circle-minus@else lock@endif me-1 fs-15"></i>{{ ucwords($status) }} Users</li>
+        <li class="breadcrumb-item active" aria-current="page"><i class="ti ti-{{ $status == 'active' ? 'circle-check' : ($status == 'inactive' ? 'circle-minus' : 'lock') }} me-1 fs-15"></i>{{ ucwords($status) }} Users</li>
     </ol>
 </nav>
 

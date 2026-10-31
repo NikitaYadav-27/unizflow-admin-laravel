@@ -18,15 +18,9 @@
                 <div class="card-body p-0">
                     <div class="d-sm-flex align-items-top p-4 border-bottom-0 main-profile-cover">
                         <div>
-                            <span class="avatar avatar-xxl avatar-rounded online me-3 bg-white text-primary fw-bold">
-                                            @php
-                                  $nameParts = explode(' ', $user['name'] ?? '');
-                                  $initials = '';
-                                  foreach ($nameParts as $n) {
-                                      $initials .= strtoupper($n[0] ?? '');
-                                  }
-                              @endphp{{ $initials }}
-                                        </span>
+                            <span class="avatar avatar-xxl avatar-rounded online me-3 bg-white text-primary fw-bold fs-24 d-flex align-items-center justify-content-center">
+                                {{ strtoupper(substr(trim($user['name'] ?? 'U'), 0, 2)) }}
+                            </span>
                         </div>
                         <div class="flex-fill main-profile-info">
                             <div class="d-flex align-items-center justify-content-between">

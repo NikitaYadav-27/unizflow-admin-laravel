@@ -246,13 +246,9 @@
                             data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                             <div class="d-flex align-items-center">
                                 <div class="me-sm-2 me-0">
-                                <span class="avatar avatar-sm me-2 bg-primary">@php 
-                                    $name = explode(" ", $admin['name'] ?? '');
-                                    $initials = "";
-                                    foreach ($name as $n) {
-                                        $initials .= strtoupper($n[0] ?? '');
-                                    }
-                                @endphp{{ $initials }}</span>
+                                <span class="avatar avatar-sm me-2 bg-primary d-flex align-items-center justify-content-center text-white fw-bold">
+                                    {{ strtoupper(substr(trim($admin['name'] ?? 'A'), 0, 2)) }}
+                                </span>
                                 </div>
                                 <div class="d-sm-block d-none">
                                     <p class="fw-semibold mb-0 lh-1">{{ $admin['name'] ?? '' }}</p>

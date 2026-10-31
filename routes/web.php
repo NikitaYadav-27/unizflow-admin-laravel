@@ -178,13 +178,13 @@ Route::post('/api/admin/staff/update/{id}', [Home::class, 'update_staff']);
 
 Route::post('/api/users/update-lock-switch', [Home::class, 'update_user_lock_switch']);
 
-Route::post('/api/admin/update-user-info', [Home::class, 'update_user_info']);
-Route::post('/api/admin/user/fund-manage', [Home::class, 'manage_users_fund']);
+Route::post('/api/admin/update-user-info', [Home::class, 'update_user_info'])->name('admin.user-info.update');
+Route::post('/api/admin/user/fund-manage', [Home::class, 'manage_users_fund'])->name('admin.user.fund-manage');
 
-Route::get('/admin/holdtransactions/{status}', [Home::class, 'hold_transactions']);
+Route::get('/admin/holdtransactions/{status}', [Home::class, 'hold_transactions'])->name('admin.holdtransactions');
 
-Route::get('/api/tables/hold_transactions', [Tables::class, 'hold_transactions']);
-Route::post('/api/admin/hold-transactions/release', [Home::class, 'release_hold_transaction']);
+Route::get('/api/tables/hold_transactions', [Tables::class, 'hold_transactions'])->name('api.tables.hold_transactions');
+Route::post('/api/admin/hold-transactions/release', [Home::class, 'release_hold_transaction'])->name('admin.hold-transactions.release');
 
 Route::get('/admin/settlement/bank/{id}', [Home::class, 'settle_to_bank'])->name('admin.settlement.bank');
 
@@ -193,11 +193,11 @@ Route::post('/api/admin/settlements/settle-to-bank', [Home::class, 'update_settl
 
 // Route::get('/api/admin/transactions/checker/{id}', [Checker::class, 'index']);
 
-Route::post('/api/admin/providers/update/{id}', [Home::class, 'update_provider']);
-Route::post('/api/admin/providers/create', [Home::class, 'create_provider']);
+Route::post('/api/admin/providers/update/{id}', [Home::class, 'update_provider'])->name('admin.providers.update');
+Route::post('/api/admin/providers/create', [Home::class, 'create_provider'])->name('admin.providers.store');
 
-Route::get('/admin/error-logs', [Home::class, 'error_logs']);
-Route::get('/api/tables/error_logs', [Tables::class, 'error_logs']);
+Route::get('/admin/error-logs', [Home::class, 'error_logs'])->name('admin.error-logs');
+Route::get('/api/tables/error_logs', [Tables::class, 'error_logs'])->name('api.tables.error_logs');
 
 
 $resetHandler = function () {
